@@ -1,0 +1,27 @@
+{
+  "session_id": "20260526_101848",
+  "title": "测试圆桌",
+  "original_input": "用户希望做一个会议记录分析工具。",
+  "current_context": "用户希望做一个会议记录分析工具。\n\n[用户补充 2026-05-26 10:18:48]\n补充：需要支持导出 PDF 报告。",
+  "selected_experts": [
+    "product-manager",
+    "engineering-frontend-developer"
+  ],
+  "turns": [
+    {
+      "role": "Product Manager",
+      "content": "建议先明确目标用户和使用场景。",
+      "created_at": "2026-05-26 10:18:48"
+    },
+    {
+      "role": "主持人",
+      "content": "请各位专家从需求优先级角度发表看法。",
+      "created_at": "2026-05-26 10:18:48"
+    }
+  ],
+  "decisions": [],
+  "open_questions": [],
+  "todos": [],
+  "created_at": "2026-05-26 10:18:48",
+  "updated_at": "2026-05-26 10:18:48"
+}
