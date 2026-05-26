@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import List
 
 DEFAULT_PROJECT_CONTEXT = """# 项目背景
 
@@ -23,7 +24,7 @@ def read_multiline_input(prompt_text: str = "", end_marker: str = "END") -> str:
     if prompt_text:
         print(prompt_text)
 
-    lines: list[str] = []
+    lines: List[str] = []
     marker = end_marker.strip().upper()
 
     while True:
@@ -77,7 +78,7 @@ def check_sensitive_info(text: str) -> list:
     if not text:
         return []
 
-    found: list[str] = []
+    found: List[str] = []
 
     if re.search(r"(?<!\d)1\d{10}(?!\d)", text):
         found.append("手机号")

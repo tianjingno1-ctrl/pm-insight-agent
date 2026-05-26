@@ -5,6 +5,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 SESSIONS_DIR = Path("memory/sessions")
 
@@ -131,13 +132,13 @@ def format_turns_for_prompt(session: RoundtableSession, max_chars: int = 6000) -
     if not session.turns:
         return ""
 
-    blocks: list[str] = []
+    blocks: List[str] = []
     for turn in session.turns:
         role = turn.get("role", "") if isinstance(turn, dict) else turn.role
         content = turn.get("content", "") if isinstance(turn, dict) else turn.content
         blocks.append(f"## {role}\n{content}\n")
 
-    selected: list[str] = []
+    selected: List[str] = []
     total = 0
     for block in reversed(blocks):
         if selected and total + len(block) > max_chars:
@@ -152,6 +153,28 @@ def format_turns_for_prompt(session: RoundtableSession, max_chars: int = 6000) -
 
     selected.reverse()
     return "".join(selected)
+
+
+from io import BytesIO
+
+from PIL import Image
+import pytesseract
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+
+def extract_text_from_image(image_path: str) -> str:
+    """从图片中提取文字，返回 OCR 识别结果"""
+    image = Image.open(image_path)
+    text = pytesseract.image_to_string(image, lang="chi_sim+eng")
+    return text.strip()
+
+
+def extract_text_from_image_bytes(image_bytes: bytes) -> str:
+    """从图片字节流中提取文字（适用于 Streamlit 上传文件）。"""
+    image = Image.open(BytesIO(image_bytes))
+    text = pytesseract.image_to_string(image, lang="chi_sim+eng")
+    return text.strip()
 
 
 if __name__ == "__main__":

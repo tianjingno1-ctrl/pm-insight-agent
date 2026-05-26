@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 SKIP_DIRS = frozenset({".github", "examples", "scripts", "integrations"})
 
@@ -43,7 +43,7 @@ def _parse_expert_agent(md_path: Path, base_dir: Path) -> ExpertAgent:
     )
 
 
-def load_expert_agents(base_dir: str = "agents_library/agency-agents") -> list[ExpertAgent]:
+def load_expert_agents(base_dir: str = "agents_library/agency-agents") -> List[ExpertAgent]:
     """
     扫描 base_dir 下所有子目录中的 .md 文件（不包括根目录的 README.md、CONTRIBUTING.md 等）。
     每个 .md 文件转换为一个 ExpertAgent 对象。
@@ -54,7 +54,7 @@ def load_expert_agents(base_dir: str = "agents_library/agency-agents") -> list[E
     if not base.is_dir():
         return []
 
-    agents: list[ExpertAgent] = []
+    agents: List[ExpertAgent] = []
     for md_path in sorted(base.rglob("*.md")):
         rel = md_path.relative_to(base)
         if len(rel.parts) < 2:

@@ -2,14 +2,20 @@
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
-from roundtable.session import RoundtableSession, format_turns_for_prompt, save_session
+from roundtable.session import RoundtableSession, format_turns_for_prompt
 
 REPORTS_DIR = Path("output/reports")
 MEMORY_INSIGHTS = Path("memory/insights.md")
 MEMORY_DECISIONS = Path("memory/decisions.md")
 MEMORY_TODOS = Path("memory/todos.md")
+MEMORY_OPEN_QUESTIONS = Path("memory/open_questions.md")
 
+
+# ---------------------------------------------------------------------------
+# 内部工具函数
+# ---------------------------------------------------------------------------
 
 def _llm_response_to_text(response) -> str:
     if response is None:
@@ -55,22 +61,92 @@ def _build_summary_context(session: RoundtableSession) -> str:
 
 
 def _extract_one_line_conclusion(report: str) -> str:
+    """
+    兼容两种报告格式：
+      - 旧格式：## 1. 一句话结论  （单行文本）
+      - 新格式：## 结论            （bullet list，取第一条）
+    """
+    if not report or not str(report).strip():
+        return "（未能从报告中提取一句话结论）"
+
+    report = str(report)
+
+    # ① 旧格式：## 1. 一句话结论
     match = re.search(
         r"##\s*1\.\s*一句话结论\s*\n+(.*?)(?=\n##\s|\Z)",
         report,
         re.DOTALL,
     )
     if match:
-        return match.group(1).strip()
+        text = match.group(1).strip()
+        if text:
+            first_line = next(
+                (ln.strip() for ln in text.splitlines() if ln.strip()), ""
+            )
+            return first_line or text
+
+    # ② 新格式：## 结论（bullet list，取第一条 bullet）
+    match = re.search(
+        r"##\s*结论\s*\n+(.*?)(?=\n##\s|\Z)",
+        report,
+        re.DOTALL,
+    )
+    if match:
+        block = match.group(1).strip()
+        bullet_match = re.search(r"^[-*]\s+(.+)", block, re.MULTILINE)
+        if bullet_match:
+            return bullet_match.group(1).strip()
+        first_line = next(
+            (ln.strip() for ln in block.splitlines() if ln.strip()), ""
+        )
+        if first_line:
+            return first_line
+
     return "（未能从报告中提取一句话结论）"
 
 
-def _append_memory_file(path: Path, block: str) -> None:
+def _upsert_memory_file(
+    path: Path,
+    block: str,
+    session_id: Optional[str] = None,
+) -> None:
+    """
+    写入记忆文件中的 session 块。
+
+    - session_id 为 None：纯追加（向后兼容）。
+    - session_id 有值且文件中尚无该块：追加。
+    - session_id 有值且已有该块：替换旧块为最新内容。
+
+    多轮追问场景下，同一 session 的长期记忆应覆盖为最新沉淀结果，而不是跳过。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
-    separator = "" if not existing or existing.endswith("\n") else "\n"
-    path.write_text(f"{existing}{separator}{block}\n", encoding="utf-8")
+    normalized_block = block if block.endswith("\n") else f"{block}\n"
 
+    if not session_id:
+        separator = "" if not existing or existing.endswith("\n") else "\n"
+        path.write_text(f"{existing}{separator}{normalized_block}", encoding="utf-8")
+        return
+
+    escaped_id = re.escape(session_id)
+    # 从含 (session_id) 的 ## 标题行起，到下一个 ## 标题前或文件结尾
+    pattern = re.compile(
+        rf"^## .*?\({escaped_id}\).*?(?=\n## |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(existing)
+
+    if match:
+        updated = existing[: match.start()] + normalized_block + existing[match.end() :]
+        path.write_text(updated, encoding="utf-8")
+    else:
+        separator = "" if not existing or existing.endswith("\n") else "\n"
+        path.write_text(f"{existing}{separator}{normalized_block}", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# 公开接口
+# ---------------------------------------------------------------------------
 
 def synthesize_roundtable_report(
     llm,
@@ -104,24 +180,14 @@ def synthesize_roundtable_report(
 （用一句话说明本次讨论最重要的判断）
 
 ## 2. 背景与问题定义
-（说明本次讨论的核心问题是什么）
-
 ## 3. 专家观点摘要
 | 专家 | 核心观点 | 主要担忧 | 建议 |
 |------|----------|----------|------|
 
 ## 4. 共识结论
-（列出所有专家共同支持的判断）
-
 ## 5. 关键分歧
-（列出不同专家之间的冲突观点，并说明如何决策）
-
 ## 6. 被忽略但重要的视角
-（用户一开始没有想到，但专家补充出来的重要角度）
-
 ## 7. 产品机会
-（可以转化为哪些功能、流程、服务或商业机会）
-
 ## 8. PRD 初稿
 ### 背景
 ### 目标
@@ -244,30 +310,47 @@ def generate_prd_only(
 
 def update_memory_files(session: RoundtableSession, report: str) -> None:
     """
-    在报告生成后，把关键信息追加写入：
-    - memory/insights.md：追加本次讨论的一句话结论和日期
-    - memory/decisions.md：追加本次达成的决策（从 session.decisions 读取）
-    - memory/todos.md：追加本次待办事项（从 session.todos 读取）
+    在报告生成后，把关键信息追加写入四个记忆文件：
+      - memory/insights.md       ：本次讨论的一句话结论（兼容新旧报告格式）
+      - memory/decisions.md      ：本次达成的决策
+      - memory/todos.md          ：本次待办事项
+      - memory/open_questions.md ：本次未决问题
 
-    如果文件不存在则自动创建。
+    同一 session_id 再次沉淀时会 upsert 覆盖旧块；不同 session_id 继续追加。
+    多轮追问后用户再次点击「沉淀到长期记忆」时，memory 文件会更新为最新结论。
+
+    decisions / todos / open_questions 均从 session 字段读取，
+    使用 getattr 防御式写法，兼容旧版 session 对象缺少字段的情况。
     """
     date_str = session.updated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     header = f"## {session.title} ({session.session_id})\n日期：{date_str}\n"
+    sid = session.session_id
 
+    # ── insights ──────────────────────────────────────────────────────────
     conclusion = _extract_one_line_conclusion(report)
     insights_block = f"{header}一句话结论：{conclusion}\n---\n"
-    _append_memory_file(MEMORY_INSIGHTS, insights_block)
+    _upsert_memory_file(MEMORY_INSIGHTS, insights_block, sid)
 
-    if session.decisions:
+    # ── decisions ─────────────────────────────────────────────────────────
+    if getattr(session, "decisions", None):
         decisions_body = "\n".join(f"- {item}" for item in session.decisions)
     else:
         decisions_body = "（本次暂无记录决策）"
     decisions_block = f"{header}{decisions_body}\n---\n"
-    _append_memory_file(MEMORY_DECISIONS, decisions_block)
+    _upsert_memory_file(MEMORY_DECISIONS, decisions_block, sid)
 
-    if session.todos:
+    # ── todos ─────────────────────────────────────────────────────────────
+    if getattr(session, "todos", None):
         todos_body = "\n".join(f"- {item}" for item in session.todos)
     else:
         todos_body = "（本次暂无记录待办）"
     todos_block = f"{header}{todos_body}\n---\n"
-    _append_memory_file(MEMORY_TODOS, todos_block)
+    _upsert_memory_file(MEMORY_TODOS, todos_block, sid)
+
+    # ── open questions ────────────────────────────────────────────────────
+    if getattr(session, "open_questions", None):
+        questions_body = "\n".join(f"- {item}" for item in session.open_questions)
+    else:
+        questions_body = "（本次暂无未决问题）"
+    questions_block = f"{header}{questions_body}\n---\n"
+    _upsert_memory_file(MEMORY_OPEN_QUESTIONS, questions_block, sid)
