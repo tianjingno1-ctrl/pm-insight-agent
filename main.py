@@ -2,6 +2,7 @@
 PM Insight Roundtable：AI 产品圆桌会议
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -48,6 +49,13 @@ def _is_initial_command(text: str) -> bool:
 
 def _normalize_command(text: str) -> str:
     return text.strip().upper()
+
+
+def _open_report_file(path: Path) -> None:
+    if sys.platform == "win32":
+        resolved = path.resolve()
+        print(f"[DEBUG] 尝试打开：{resolved}，存在：{resolved.exists()}")
+        os.startfile(str(resolved))
 
 
 def _read_follow_up_input() -> str:
@@ -111,6 +119,7 @@ def _handle_session_command(
         path = save_report(report, session.session_id)
         update_memory_files(session, report)
         print(f"\n✅ 报告已保存：{path}")
+        _open_report_file(path)
         return "exit"
 
     if cmd == "PRD":
@@ -118,6 +127,7 @@ def _handle_session_command(
         prd = generate_prd_only(llm, session, project_context)
         path = save_report(prd, f"{session.session_id}_prd")
         print(f"\n✅ PRD 已保存：{path}")
+        _open_report_file(path)
         return "continue"
 
     return "unknown"

@@ -3,6 +3,12 @@ import sys
 
 import httpx
 from dotenv import load_dotenv
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 load_dotenv()
 
@@ -55,6 +61,12 @@ class LLMWrapper:
             print("❌ 请安装 openai：pip install openai>=1.0.0")
             sys.exit(1)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+        reraise=True,
+    )
     def call(self, messages: list) -> str:
         try:
             resp = self._client.chat.completions.create(
@@ -64,7 +76,7 @@ class LLMWrapper:
             return resp.choices[0].message.content or ""
         except httpx.TimeoutException:
             print("[LLM] 请求超时，请检查网络或缩短 prompt")
-            return ""
+            raise
 
     def invoke(self, messages: list) -> str:
         return self.call(messages)
