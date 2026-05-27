@@ -45,7 +45,7 @@
    · backend mock-stream @ 741c181
    · frontend hook @ fa086f8 · env mock|sse @ 6cb4ef9
    · 默认 mock；SSE 缓冲完成后播放
-✅ Phase 2.3-Demo-LLM — `scenario=llm` + OpenAI-compatible 脚本（演示版，非多 Agent）
+✅ Phase 2.3-Demo-LLM — `scenario=llm` + OpenAI-compatible 脚本（演示版，非多 Agent）· **演示交接** → `docs/handoff-phase-2.3-demo-llm.md`
 ⏳ Phase 2.3+ — roundtable 编排 + 边生成边播（未开始）
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
