@@ -126,7 +126,9 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
     }, delay);
   }, [clearTimer, finishPlayback, schedule]);
 
-  playFromIndexRef.current = playFromIndex;
+  useEffect(() => {
+    playFromIndexRef.current = playFromIndex;
+  }, [playFromIndex]);
 
   const beginPlayback = useCallback(
     (options: { resetIndex: boolean }) => {

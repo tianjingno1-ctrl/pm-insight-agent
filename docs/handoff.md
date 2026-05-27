@@ -366,9 +366,9 @@ flowchart TB
 | **A** | ✅ `bf66604` | 架构决策文档 |
 | **B** | ✅ `855efd9` | FastAPI 骨架 + `/health` |
 | **C** | ✅ `741c181` + tag `phase-2.2-mock-sse-backend` | mock-stream + scenarios + tests |
-| **D** | 🔄 文档 | 联调 / 验收锚点（本批） |
-| **E** | ⏳ | `useMeetingEventStream`（buffer） |
-| **F1** | ⏳ | `NEXT_PUBLIC_MEETING_SOURCE` + E2E |
+| **D** | ✅ `7e5620c` | 联调 / 验收锚点文档 |
+| **E** | ✅ `fa086f8` | `useMeetingEventStream`（buffer） |
+| **F1** | 🔄 | `NEXT_PUBLIC_MEETING_SOURCE` 接线（默认 mock） |
 | **2.2.1 / F2** | ⏳ | dev-only source/scenario UI |
 
 ---

@@ -84,7 +84,10 @@ export function useMeetingEventStream(
 
   const sourceRef = useRef<EventSource | null>(null);
   const optionsRef = useRef({ url, scenario, pace });
-  optionsRef.current = { url, scenario, pace };
+
+  useEffect(() => {
+    optionsRef.current = { url, scenario, pace };
+  }, [url, scenario, pace]);
 
   const closeSource = useCallback(() => {
     if (sourceRef.current) {
@@ -153,13 +156,19 @@ export function useMeetingEventStream(
   }, [closeSource]);
 
   useEffect(() => {
-    if (autoStart) {
-      start();
+    if (!autoStart) {
+      return undefined;
     }
+    const timerId = window.setTimeout(() => {
+      start();
+    }, 0);
     return () => {
+      window.clearTimeout(timerId);
       closeSource();
     };
-  }, [autoStart, start, closeSource]);
+    // Mount-only auto-connect when enabled (SSE mode at build time).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, []);
 
   const isStreaming = status === "connecting" || status === "open";
 

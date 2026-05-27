@@ -1,5 +1,28 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Meeting event source (Phase 2.2)
+
+Default: **mock** (`mockEvents.ts`) — no backend required.
+
+Optional SSE (requires [backend](../backend/README.md) on port 8000):
+
+```powershell
+$env:NEXT_PUBLIC_MEETING_SOURCE="sse"
+$env:NEXT_PUBLIC_MEETING_SCENARIO="default"   # optional
+$env:NEXT_PUBLIC_MEETING_PACE="1.0"            # optional
+$env:NEXT_PUBLIC_MEETING_SSE_URL="http://127.0.0.1:8000/api/meetings/mock-stream"  # optional
+npm run dev
+```
+
+| Variable | Default |
+|----------|---------|
+| `NEXT_PUBLIC_MEETING_SOURCE` | `mock` |
+| `NEXT_PUBLIC_MEETING_SSE_URL` | `http://127.0.0.1:8000/api/meetings/mock-stream` |
+| `NEXT_PUBLIC_MEETING_SCENARIO` | `default` |
+| `NEXT_PUBLIC_MEETING_PACE` | `1.0` |
+
+SSE mode buffers the full stream (`meeting_done`) before playback starts.
+
 ## Getting Started
 
 First, run the development server:

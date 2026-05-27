@@ -3,8 +3,15 @@
 import { useMemo, useState } from "react";
 import { agents, mockEvents } from "@/lib/mockEvents";
 import { getTargetRelationLine } from "@/lib/meetingUi";
+import {
+  meetingSource,
+  getMeetingPace,
+  getMeetingScenario,
+  getMeetingSseUrl,
+} from "@/lib/meetingSource";
+import { useMeetingEventStream } from "@/hooks/useMeetingEventStream";
 import { useMeetingPlayer } from "@/hooks/useMeetingPlayer";
-import type { AgentId } from "@/lib/types";
+import type { AgentId, MeetingEvent } from "@/lib/types";
 import { PonyAgent } from "./PonyAgent";
 import { MeetingInput } from "./MeetingInput";
 import { SummaryCard } from "./SummaryCard";
@@ -19,10 +26,35 @@ const positionClass: Record<
   bottom: "col-start-2 row-start-3 justify-self-center",
 };
 
+const isSseSource = meetingSource === "sse";
+
 export function RoundTableScene() {
   const [question, setQuestion] = useState(
     "两周内 AI 财务助手 MVP 应该做什么？",
   );
+
+  const stream = useMeetingEventStream({
+    url: getMeetingSseUrl(),
+    scenario: getMeetingScenario(),
+    pace: getMeetingPace(),
+    autoStart: isSseSource,
+  });
+
+  const eventsForPlayer: MeetingEvent[] = useMemo(() => {
+    if (!isSseSource) {
+      return mockEvents;
+    }
+    if (stream.status === "closed") {
+      return stream.events;
+    }
+    return [];
+  }, [stream.events, stream.status]);
+
+  const layoutKey = isSseSource
+    ? stream.status === "closed"
+      ? "sse-ready"
+      : "sse-pending"
+    : "mock";
 
   const {
     currentEvent,
@@ -35,7 +67,10 @@ export function RoundTableScene() {
     resume,
     replay,
     reset,
-  } = useMeetingPlayer(mockEvents);
+  } = useMeetingPlayer(eventsForPlayer);
+
+  const sseStreamReady =
+    isSseSource && stream.status === "closed" && stream.events.length > 0;
 
   const speakingId: AgentId | undefined =
     currentEvent?.type === "speech" ? currentEvent.speakerId : undefined;
@@ -63,19 +98,31 @@ export function RoundTableScene() {
 
   const handleStart = () => {
     if (!question.trim()) return;
+    if (isSseSource && !sseStreamReady) {
+      return;
+    }
     reset();
     start();
   };
 
+  const inputDisabled =
+    isPlaying ||
+    (isSseSource &&
+      (stream.status === "connecting" ||
+        stream.status === "open" ||
+        stream.status === "error"));
+
+  const subtitle = isSseSource
+    ? "SSE mock · 缓冲完成后播放 · docs/meeting-event-spec.md"
+    : "Mock 播放 · 协议对齐 docs/meeting-event-spec.md";
+
   return (
-    <div className="flex min-h-screen flex-col px-3 py-6 sm:px-4 sm:py-8">
+    <div key={layoutKey} className="flex min-h-screen flex-col px-3 py-6 sm:px-4 sm:py-8">
       <header className="mb-4 text-center sm:mb-6">
         <h1 className="text-xl font-bold text-violet-900 sm:text-3xl">
           小马 AI 风格 · 专家圆桌
         </h1>
-        <p className="mt-2 text-xs text-slate-600 sm:text-sm">
-          Mock 播放 · 协议对齐 docs/meeting-event-spec.md
-        </p>
+        <p className="mt-2 text-xs text-slate-600 sm:text-sm">{subtitle}</p>
       </header>
 
       <div className="relative mx-auto w-full max-w-3xl">
@@ -113,12 +160,28 @@ export function RoundTableScene() {
       </div>
 
       <div className="mt-8 space-y-4 sm:mt-10">
+        {isSseSource && stream.status === "connecting" ? (
+          <p className="text-center text-xs text-slate-500">
+            正在连接 mock SSE…
+          </p>
+        ) : null}
+        {isSseSource && stream.status === "open" ? (
+          <p className="text-center text-xs text-slate-500">
+            正在接收会议事件…
+          </p>
+        ) : null}
+        {isSseSource && stream.status === "error" ? (
+          <p className="text-center text-xs text-rose-600">
+            {stream.error ?? "SSE 加载失败，请确认 backend :8000 已启动"}
+          </p>
+        ) : null}
+
         {!hasStarted ? (
           <MeetingInput
             value={question}
             onChange={setQuestion}
             onSubmit={handleStart}
-            disabled={isPlaying}
+            disabled={inputDisabled}
           />
         ) : (
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
