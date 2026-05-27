@@ -18,20 +18,24 @@
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **`0713f93`** — `docs: 交接包增加项目结构树与模块关联说明` |
+| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **`3360287`** — `fix(frontend): keep speech bubbles visible during playback` |
 
-历史 tag：`phase-1.5-before-summary-render-final`（`d9f80aa`）。  
-**文档漂移**：此前 handoff/progress 曾写 `27bdeff`，已在 Batch A（契约文档）中修正。
+**Phase 2.1 tags（experiment 分支，已推远程）**
+
+| Tag | Commit | 含义 |
+|-----|--------|------|
+| `phase-2.1-pony-ui-polish` | `95fa3d6` | Batch C UI polish 完成点 |
+| `phase-2.1-pony-ui-accepted` | `3360287` | **本地验收通过**（含 hotfix）；**推荐**作为 Phase 2.1 回滚锚点 |
+
+> 勿移动已有 `phase-2.1-pony-ui-polish`；验收补丁在其后单独提交并打 `accepted` tag。
 
 ### 当前阶段（2026-05-27）
 
 ```text
 ✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
-✅ Next.js Pony Mock（mockEvents + useMeetingPlayer）
-✅ Batch A：meeting-event-spec 扩展 + docs 同步
-⏳ Phase 2.1a 代码未开始（types / MeetingPlayer / hook 修复）
-⏳ backend/ 未创建（至 Phase 2.2）
-⏳ reaction 有协议、无 UI；control events 仅文档定义
+✅ Phase 2.1 Pony 前端闭环（契约 → 播放器 API → UI polish → 本地验收）
+⏳ Phase 2.2 FastAPI/SSE mock backend（下一入口，backend/ 尚未创建）
+⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
 ```
 
@@ -50,13 +54,13 @@
 3. 长期记忆：**仅按钮写入** `memory/*.md`，讨论中不自动写
 4. 未来后端 SSE 必须兼容 `docs/meeting-event-spec.md` 的 `MeetingEvent`
 
-### 下一步 P0（已确认评审结论）
+### 下一步 P0（Phase 2.2 入口）
 
 | 优先级 | 内容 |
 |--------|------|
-| **P0-A** | **Phase 2.1a** — Contract + player API cleanup：`types.ts`、`MeetingPlayer` interface、hook `switch(type)`、**pause / resume / replay** |
-| **P0-B** | **Phase 2.1b** — Pony UI polish：emotion / action / target / SummaryCard「🎯 本轮决策」/ replay / 移动端 / 多 mock |
-| **P0-C** | **Phase 2.2** — FastAPI/SSE mock（静态事件流）；**不创建 backend/ 直至本阶段** |
+| **P0** | **Phase 2.2** — FastAPI/SSE mock backend（静态事件流）；**不动** `app.py` / `roundtable/` |
+| **P0-文档** | 新建 `backend/` 或 `api/` 前，先在 `docs/` 确认目录策略 |
+| **P0-前端** | 新增 SSE 播放 hook（如 `useMeetingPlayerFromSSE`），**不替换** 现有 `useMeetingPlayer`；保留 `mockEvents` 作 fallback/demo |
 
 ### 下一步 P1（Phase 2.3+）
 
@@ -143,14 +147,17 @@ pm-insight-agent/                          # monorepo 根
 │   ├── components/
 │   │   ├── RoundTableScene.tsx              # 主场景：圆桌布局 + 输入 + 播放控制
 │   │   ├── PonyAgent.tsx                    # 单角色头像、情绪环、speaking 动画
-│   │   ├── SpeechBubble.tsx                 # 头顶气泡（Framer Motion spring）
+│   │   ├── SpeechBubble.tsx                 # 气泡：emotion/action/target；top/bottom placement；多 keyframe 用 tween
 │   │   ├── MeetingInput.tsx                 # 用户问题输入
-│   │   └── SummaryCard.tsx                  # 三行小结卡片
+│   │   └── SummaryCard.tsx                  # 「🎯 本轮决策」三行小结
 │   ├── hooks/
-│   │   └── useMeetingPlayer.ts              # ★ 事件播放状态机（mock；未来换 SSE 源）
+│   │   └── useMeetingPlayer.ts              # ★ 事件播放状态机（mock；Phase 2.2 旁路 SSE hook）
 │   ├── lib/
 │   │   ├── types.ts                         # MeetingEvent / AgentId 类型
-│   │   └── mockEvents.ts                    # mock 一场圆桌 + agents 配置
+│   │   ├── meeting-player.ts                # MeetingPlayer 接口与实现
+│   │   ├── meetingUi.ts                     # emotion 样式、action 标签、target 关系文案
+│   │   ├── mockEvents.ts                    # 默认 mock 一场圆桌（demo 主路径）
+│   │   └── mockScenarios.ts                 # concise / verbose / weak 压力测试场景（未接 UI 切换）
 │   ├── package.json                         # [Next 16, React, Tailwind, framer-motion]
 │   └── (node_modules/, .next/ 不提交 git)
 │
@@ -238,20 +245,74 @@ flowchart TB
 
 ### frontend/hooks/useMeetingPlayer.ts
 
-暴露：`currentEvent`, `currentEventId`, `summary`, `isPlaying`, `hasStarted`, `start()`, `pause()`, `reset()`
+暴露：`currentEvent`, `summary`, `isPlaying`, `hasStarted`, `isComplete`, `start()`, `pause()`, `resume()`, `replay()`, `reset()`
+
+**播放语义（Phase 2.1 已验收）**
+
+| 方法 | 行为 |
+|------|------|
+| `start` | 从头开始播放 |
+| `pause` | 暂停当前进度 |
+| `resume` | 从暂停位置继续（非重头 `start`） |
+| `replay` | 会议结束后重新播放，**不**回到输入态 |
+| `reset` | 回到输入态，清空进度 |
+
+---
+
+## Phase 2.1 完成记录（Batch A–C + 验收 hotfix）
+
+### 一、完成状态
+
+- [x] Pony roundtable frontend mock
+- [x] `MeetingEvent` 契约扩展（Batch A 文档 + Batch B 类型）
+- [x] `MeetingPlayer` API 修正（pause / resume / replay / isComplete）
+- [x] UI polish（emotion / action / target / SummaryCard / 移动端）
+- [x] 本地验收 hotfix（Motion tween + 顶部气泡 placement）
+
+### 二、关键提交
+
+| Commit | 说明 |
+|--------|------|
+| `100ab73` | `docs: extend MeetingEvent spec and sync Phase 2.1 contract` |
+| `9c7f236` | `feat(frontend): align MeetingEvent types and fix MeetingPlayer API` |
+| `95fa3d6` | `feat(frontend): polish pony roundtable UI experience` |
+| `3360287` | `fix(frontend): keep speech bubbles visible during playback` |
+
+### 三、验收记录
+
+- `npm run build` 通过
+- `npm run dev` 本地浏览器验收通过
+- 运行时修复：
+  - Framer Motion：多 keyframe + spring/inertia 报错 → shake/bounce 改 `tween`
+  - 顶部专家 `SpeechBubble` 被视口裁切 → `bubblePlacement="bottom"`（仅 `position: top` 角色）
+
+### 四、当前功能要点
+
+- 默认播放：`mockEvents.ts`（未改默认文案）
+- 压力测试数据：`mockScenarios.ts`（`concise` / `verbose` / `weak`），UI 尚未切换入口
+- `SpeechBubble`：emotion / action / `targetId` 关系行；顶部角色气泡向下展开
+- speaking / targeted 高亮保留（`PonyAgent` ring + 虚线）
+
+### 五、Phase 2.2 建议入口
+
+1. FastAPI/SSE mock backend，emit 与 `meeting-event-spec.md` 一致的 `MeetingEvent`
+2. **不动** `app.py`、`roundtable/` Streamlit 路径
+3. 新建 `backend/` 或 `api/` 前在 `docs/` 定目录策略
+4. 前端新增 `useMeetingPlayerFromSSE`（或类似），与现有 mock hook 并存
+5. 保留 `mockEvents` 为 fallback / demo 模式
 
 ---
 
 ## 已知注意事项
 
 1. **`DEBUG_SUMMARY=False`**（main 已封版；勿在文档中写 True）
-2. **`reaction`**：协议含此 type，**mock/UI 均未实现**（Phase 2.1 标 reserved）
-3. **pause/continue**：`RoundTableScene` 在暂停后点「继续」会调 `start()`，**从第 0 条事件重播** — 待 2.1a 改为 resume/replay
-4. **用户输入**：`question` 仅作启动入口，**不驱动** `mockEvents` 内容（固定脚本）
-5. **control events**：`meeting_started` / `meeting_done` / `error` 已在 spec 定义；hook 须避免时间轴空转（2.1a）
-6. `frontend/` 播放逻辑**只在** `useMeetingPlayer.ts`（及未来 SSE 变体）
-7. **不改** `app.py` / `roundtable/`；**不创建** `backend/` 直至 Phase 2.2
-8. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
+2. **`reaction`**：协议含此 type，**mock/UI 均未实现**（主 mock 无 reaction 事件）
+3. **用户输入**：`question` 仅作启动入口，**不驱动** `mockEvents` 内容（固定脚本）
+4. **control events**：`meeting_started` / `meeting_done` / `error` 已在 hook 中 `switch(type)` 处理
+5. `frontend/` mock 播放逻辑在 `useMeetingPlayer.ts`；SSE 应新增独立 hook，不替换 mock
+6. **不改** `app.py` / `roundtable/`；**不创建** `backend/` 直至 Phase 2.2 启动
+7. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
+8. **Framer Motion**：多 keyframe 动画必须用 `tween`，勿对 3+ keyframe 使用 spring/inertia
 
 ---
 
@@ -266,4 +327,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 Batch A · `experiment/pony-roundtable-ui` @ **`0713f93`** · main @ `5d2bb24`*
+*交接包版本：2026-05-27 Batch D · Phase 2.1 收口 · `experiment/pony-roundtable-ui` @ **`3360287`**（tag `phase-2.1-pony-ui-accepted`）· main @ `5d2bb24`*

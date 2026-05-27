@@ -1,6 +1,6 @@
 # 设计决策与已知问题
 
-> 最后更新：2026-05-27 · experiment `0713f93` · main `5d2bb24`（tag `phase-1.5-summary-done`）
+> 最后更新：2026-05-27 · experiment `3360287`（tag `phase-2.1-pony-ui-accepted`）· main `5d2bb24`（tag `phase-1.5-summary-done`）
 
 ## 关键设计决策
 
@@ -116,8 +116,10 @@
 | Streamlit 小结正式渲染 | ✅ 已封版 | main `5d2bb24`，`DEBUG_SUMMARY=False` |
 | 专家病句/自造词 | ❌ 待做 | Phase 2.3.1 |
 | LLM 小结 JSON 字段损坏 | ⚠️ 可恢复 | `force_summary_markdown` |
-| Pony：`reaction` 有协议无 UI | ⏳ 已知 | Phase 2.1 标 reserved；2.1b 可选 |
-| Pony：pause 后「继续」调用 `start()` 重头 | ❌ 待修 | Phase 2.1a hook |
+| Pony：`reaction` 有协议无 UI | ⏳ 已知 | 主 mock 无 reaction；Phase 2.2+ 可选 |
+| Pony：pause 后「继续」调用 `start()` 重头 | ✅ 已修 | `9c7f236`：`resume()` / `replay()`；`RoundTableScene` 已接线 |
+| Pony：Framer Motion 多 keyframe + spring 报错 | ✅ 已修 | `3360287`：shake/bounce 用 `tween` |
+| Pony：顶部专家气泡被裁切 | ✅ 已修 | `3360287`：`bubblePlacement=bottom`（仅 top 角色） |
 | Pony：用户 `question` 不驱动 mock | ⏳ 已知 | mock 阶段仅作启动入口；2.3 接 API |
 | `requirements.txt` 体积 | ⚠️ 注意 | 完整 `pip install -r requirements.txt` |
 | Python 3.8 全局旧 Streamlit | ⚠️ 注意 | 用 venv / `python -m streamlit --version` |
@@ -126,7 +128,7 @@
 
 **Streamlit 线**（仅 bugfix）：`app.py` 小结渲染优先查 `_render_message_list`、`_turn_to_message`、`_dedupe_summary_messages`。
 
-**Pony 线**（experiment 分支）：主改 `frontend/`、`docs/`；**不重构** `roundtable/`；**不创建** `backend/` 直至 Phase 2.2。
+**Pony 线**（experiment 分支）：Phase 2.1 已收口 @ `3360287`；下一入口 Phase 2.2（SSE）。主改 `frontend/`、`docs/`；**不重构** `roundtable/`；**不创建** `backend/` 直至 Phase 2.2 启动。SSE hook 应**新增**（如 `useMeetingPlayerFromSSE`），不替换 mock `useMeetingPlayer`。
 
 用户常要求 **只改 `app.py`** 时，不要动 `discussion.py` 收场、`synthesis.py` upsert、ChromaDB/OCR 核心。
 
