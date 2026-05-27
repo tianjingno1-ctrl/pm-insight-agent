@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-SUPPORTED_SCENARIOS = frozenset({"default", "concise", "verbose", "weak"})
+MOCK_SCENARIOS = frozenset({"default", "concise", "verbose", "weak"})
+LLM_SCENARIO = "llm"
+SUPPORTED_SCENARIOS = MOCK_SCENARIOS | {LLM_SCENARIO}
 
 
 class UnknownScenarioError(ValueError):
@@ -207,6 +209,6 @@ _SCENARIOS: dict[str, list[dict]] = {
 
 
 def get_scenario_events(scenario: str) -> list[dict]:
-    if scenario not in SUPPORTED_SCENARIOS:
+    if scenario not in MOCK_SCENARIOS:
         raise UnknownScenarioError(scenario)
     return [dict(event) for event in _SCENARIOS[scenario]]

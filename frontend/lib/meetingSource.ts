@@ -23,5 +23,14 @@ export function getMeetingPace(): number {
   return Number.isFinite(pace) ? pace : 1.0;
 }
 
+export function getMeetingTopic(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_MEETING_TOPIC;
+  if (raw === undefined) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 /** Resolved at build time (Next.js `NEXT_PUBLIC_*`). */
 export const meetingSource = getMeetingSource();

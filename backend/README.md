@@ -8,7 +8,9 @@ FastAPI **mock** backend for the pony-style roundtable UI.
 
 - `GET /health` — service status (`sse: "mock_stream"`)
 - `GET /api/meetings/mock-stream` — mock SSE `MeetingEvent` stream
-- No real LLM, no database, no auth
+- **Demo LLM** (`scenario=llm`): OpenAI-compatible script generation with local fallback
+- No database, no auth
+- Not full multi-agent orchestration
 - Does **not** import `roundtable/` or `app.py`
 - Does **not** modify root `requirements.txt`
 
@@ -40,6 +42,23 @@ py -3.12 -m pip install -e ".[dev]"
 ```powershell
 py -3.12 -m uvicorn app.main:app --reload --port 8000
 ```
+
+### Demo LLM env (optional)
+
+```powershell
+$env:OPENAI_API_KEY="your-key"
+$env:OPENAI_BASE_URL="https://api.openai.com/v1"
+$env:OPENAI_MODEL="gpt-4o-mini"
+py -3.12 -m uvicorn app.main:app --reload --port 8000
+```
+
+If `OPENAI_API_KEY` is unset or the LLM call fails, `scenario=llm` uses a **local fallback** script (still emits `meeting_done`).
+
+```powershell
+curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=llm&topic=AI%E4%BC%9A%E4%B8%8D%E4%BC%9A%E5%8F%96%E4%BB%A3%E4%BA%A7%E5%93%81%E7%BB%8F%E7%90%86&pace=4.0"
+```
+
+Scenarios: `default` | `concise` | `verbose` | `weak` | **`llm`** (with `topic` query).
 
 ## Verification checklist (Batch C / D)
 

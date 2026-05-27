@@ -25,6 +25,7 @@ export type UseMeetingEventStreamOptions = {
   url?: string;
   scenario?: string;
   pace?: number;
+  topic?: string;
   autoStart?: boolean;
 };
 
@@ -61,10 +62,14 @@ function buildStreamUrl(
   baseUrl: string,
   scenario: string,
   pace: number,
+  topic?: string,
 ): string {
   const url = new URL(baseUrl);
   url.searchParams.set("scenario", scenario);
   url.searchParams.set("pace", String(pace));
+  if (topic) {
+    url.searchParams.set("topic", topic);
+  }
   return url.toString();
 }
 
@@ -75,6 +80,7 @@ export function useMeetingEventStream(
     url = DEFAULT_STREAM_URL,
     scenario = "default",
     pace = 1.0,
+    topic,
     autoStart = false,
   } = options;
 
@@ -83,11 +89,11 @@ export function useMeetingEventStream(
   const [error, setError] = useState<string | null>(null);
 
   const sourceRef = useRef<EventSource | null>(null);
-  const optionsRef = useRef({ url, scenario, pace });
+  const optionsRef = useRef({ url, scenario, pace, topic });
 
   useEffect(() => {
-    optionsRef.current = { url, scenario, pace };
-  }, [url, scenario, pace]);
+    optionsRef.current = { url, scenario, pace, topic };
+  }, [url, scenario, pace, topic]);
 
   const closeSource = useCallback(() => {
     if (sourceRef.current) {
@@ -114,8 +120,11 @@ export function useMeetingEventStream(
     setError(null);
     setStatus("connecting");
 
-    const { url: streamUrl, scenario: sc, pace: p } = optionsRef.current;
-    const source = new EventSource(buildStreamUrl(streamUrl, sc, p));
+    const { url: streamUrl, scenario: sc, pace: p, topic: streamTopic } =
+      optionsRef.current;
+    const source = new EventSource(
+      buildStreamUrl(streamUrl, sc, p, streamTopic),
+    );
     sourceRef.current = source;
 
     source.onopen = () => {

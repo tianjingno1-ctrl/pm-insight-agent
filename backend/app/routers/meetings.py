@@ -15,6 +15,7 @@ PACE_MAX = 4.0
 async def mock_meeting_stream(
     scenario: str = Query(default="default"),
     pace: float = Query(default=1.0),
+    topic: str | None = Query(default=None),
 ) -> StreamingResponse:
     if scenario not in SUPPORTED_SCENARIOS:
         raise HTTPException(
@@ -28,7 +29,7 @@ async def mock_meeting_stream(
         )
 
     return StreamingResponse(
-        generate_mock_sse_frames(scenario, pace),
+        generate_mock_sse_frames(scenario, pace, topic=topic),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -45,7 +45,8 @@
    · backend mock-stream @ 741c181
    · frontend hook @ fa086f8 · env mock|sse @ 6cb4ef9
    · 默认 mock；SSE 缓冲完成后播放
-⏳ Phase 2.3 — roundtable → MeetingEvent + 真实 LLM（未开始）
+✅ Phase 2.3-Demo-LLM — `scenario=llm` + OpenAI-compatible 脚本（演示版，非多 Agent）
+⏳ Phase 2.3+ — roundtable 编排 + 边生成边播（未开始）
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
 ```
@@ -88,8 +89,41 @@ curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pac
 | 1 | `cd backend` → `py -3.12 -m uvicorn app.main:app --reload --port 8000` | `curl.exe http://127.0.0.1:8000/health` |
 | 2 | `cd frontend` → `npm run dev`（默认 mock） | `http://localhost:3000` |
 | 2b | SSE：`$env:NEXT_PUBLIC_MEETING_SOURCE="sse"` 后 `npm run dev` | 需终端 1 backend；缓冲完成后播放 |
+| 2c | **Demo LLM**：见下方 | `scenario=llm` + `NEXT_PUBLIC_MEETING_TOPIC` |
 
 详见 `frontend/README.md`（`NEXT_PUBLIC_MEETING_*`）。
+
+#### Demo LLM 启动（明天演示）
+
+**Backend**
+
+```powershell
+cd backend
+$env:OPENAI_API_KEY="你的 key"
+$env:OPENAI_BASE_URL="https://api.openai.com/v1"
+$env:OPENAI_MODEL="gpt-4o-mini"
+py -3.12 -m uvicorn app.main:app --reload --port 8000
+```
+
+**Frontend**
+
+```powershell
+cd frontend
+$env:NEXT_PUBLIC_MEETING_SOURCE="sse"
+$env:NEXT_PUBLIC_MEETING_SCENARIO="llm"
+$env:NEXT_PUBLIC_MEETING_TOPIC="AI会不会取代产品经理"
+$env:NEXT_PUBLIC_MEETING_PACE="4.0"
+npm run dev
+```
+
+说明：
+
+- 先生成完整会议脚本，再经 SSE 播放 `MeetingEvent`；**非** token 级流式；**非** 完整多 Agent。
+- 无 `OPENAI_API_KEY` 或 LLM 失败时，后端 **fallback** 本地脚本，仍正常 `meeting_done`。
+- 修改 `NEXT_PUBLIC_*` 后需重启 frontend dev server。
+- 默认 mock 仍不需 backend。
+
+**演示备用议题**：AI 会不会取代产品经理 · 创业公司应该先追求增长还是利润 · 远程办公是否会降低团队创造力 · AI 圆桌会议能不能提升团队决策质量
 
 **端口冲突**：若 8000 已被旧 uvicorn 占用（`[Errno 10048]`），先结束旧进程再启动，否则 `/health` 可能仍显示 `"sse":"not_implemented"` 且 mock-stream 404。
 
@@ -120,7 +154,7 @@ Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Obje
 | 默认 mock（无 `NEXT_PUBLIC_*`） | 原 UI；无 EventSource；不需 backend |
 | SSE opt-in | `NEXT_PUBLIC_MEETING_SOURCE=sse` → 缓冲至 `closed` 后播放 |
 | 边收边播 | 未实现 |
-| 真实 LLM | 未接入 |
+| Demo LLM (`scenario=llm`) | 已接入（演示版，见上） |
 
 ### 修改边界（评审/开发必守）
 

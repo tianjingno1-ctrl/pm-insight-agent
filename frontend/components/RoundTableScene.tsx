@@ -8,6 +8,7 @@ import {
   getMeetingPace,
   getMeetingScenario,
   getMeetingSseUrl,
+  getMeetingTopic,
 } from "@/lib/meetingSource";
 import { useMeetingEventStream } from "@/hooks/useMeetingEventStream";
 import { useMeetingPlayer } from "@/hooks/useMeetingPlayer";
@@ -37,6 +38,7 @@ export function RoundTableScene() {
     url: getMeetingSseUrl(),
     scenario: getMeetingScenario(),
     pace: getMeetingPace(),
+    topic: getMeetingTopic(),
     autoStart: isSseSource,
   });
 

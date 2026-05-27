@@ -20,8 +20,25 @@ npm run dev
 | `NEXT_PUBLIC_MEETING_SSE_URL` | `http://127.0.0.1:8000/api/meetings/mock-stream` |
 | `NEXT_PUBLIC_MEETING_SCENARIO` | `default` |
 | `NEXT_PUBLIC_MEETING_PACE` | `1.0` |
+| `NEXT_PUBLIC_MEETING_TOPIC` | *(empty — omit from URL)* |
 
 SSE mode buffers the full stream (`meeting_done`) before playback starts.
+
+### Demo LLM (Phase 2.3-Demo)
+
+Requires backend with optional `OPENAI_API_KEY` (falls back to local script if missing).
+
+```powershell
+$env:NEXT_PUBLIC_MEETING_SOURCE="sse"
+$env:NEXT_PUBLIC_MEETING_SCENARIO="llm"
+$env:NEXT_PUBLIC_MEETING_TOPIC="AI会不会取代产品经理"
+$env:NEXT_PUBLIC_MEETING_PACE="4.0"
+npm run dev
+```
+
+- Full script is generated first, then played as `MeetingEvent` over SSE (not token streaming).
+- Restart `npm run dev` after changing `NEXT_PUBLIC_*`.
+- Default **mock** mode still needs no backend.
 
 ## Getting Started
 

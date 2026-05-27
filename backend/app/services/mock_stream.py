@@ -11,8 +11,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.data.scenarios import get_scenario_events
+from app.data.scenarios import LLM_SCENARIO, get_scenario_events
 from app.models.meeting_event import validate_event_dict
+from app.services.llm_meeting import resolve_llm_meeting_events
 
 
 def format_sse_data(payload: dict[str, Any]) -> str:
@@ -46,9 +47,13 @@ def _error_frame(code: str, message: str, recoverable: bool = False) -> str:
 async def generate_mock_sse_frames(
     scenario: str,
     pace: float,
+    topic: str | None = None,
 ) -> AsyncIterator[str]:
     try:
-        events = get_scenario_events(scenario)
+        if scenario == LLM_SCENARIO:
+            events = await resolve_llm_meeting_events(topic)
+        else:
+            events = get_scenario_events(scenario)
         for event in events:
             await asyncio.sleep(calculate_delay_seconds(event, pace))
             validated = validate_event_dict(event)
