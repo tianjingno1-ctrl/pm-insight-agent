@@ -1,6 +1,6 @@
 # 设计决策与已知问题
 
-> 最后更新：2026-05-27 · experiment 文档 HEAD `525cc93` · 功能验收 `3360287`（tag `phase-2.1-pony-ui-accepted`）· main `5d2bb24`（tag `phase-1.5-summary-done`）
+> 最后更新：2026-05-27 · experiment HEAD `741c181`（tag `phase-2.2-mock-sse-backend`）· Phase 2.1 前端 `3360287`（tag `phase-2.1-pony-ui-accepted`）· main `5d2bb24`
 
 ## 关键设计决策
 
@@ -121,6 +121,10 @@
 
 **流顺序（mock）**：`meeting_started`（含唯一 `protocolVersion`）→ `speech`/`reaction`… → `summary` → `meeting_done` → close
 
+**`protocolVersion`**：当前 mock SSE 发送 **`"1.0"`**（见 `docs/meeting-event-spec.md`）。表示 **MeetingEvent 契约版本**，**不是**项目阶段号（Phase 2.1 / 2.2）。勿改为 `"2.1"`，除非 spec 有意升版。
+
+**Batch C 验收**（`741c181`，tag `phase-2.2-mock-sse-backend`）：pytest 15 passed；curl mock-stream；scenarios `default|concise|verbose|weak`；400/422 错误分支；无 SSE `event:` / `timestamp` / `metadata`。
+
 **契约**：`frontend/lib/types.ts` 为代码事实源；`meeting-event-spec.md` 人工同步；backend 局部 Pydantic，`extra='forbid'`；无顶层 `timestamp` / `metadata`；Phase 2.2 不做 codegen。
 
 **Mock 数据**：`backend/app/data/scenarios.py` 手工对齐 TS mock；接受漂移风险。
@@ -189,7 +193,7 @@
 
 **Streamlit 线**（仅 bugfix）：`app.py` 小结渲染优先查 `_render_message_list`、`_turn_to_message`、`_dedupe_summary_messages`。
 
-**Pony 线**（experiment 分支）：Phase 2.1 功能验收 @ `3360287`；Phase 2.2 Batch A 文档已定义 `backend/`。Batch B+ 可创建 `backend/`。主改 `frontend/`、`docs/`、`backend/`；**不修改** `roundtable/` / `app.py`（Phase 2.2）。SSE 拉流 hook：**`useMeetingEventStream`**；播放：**`useMeetingPlayer`**（不替换）。
+**Pony 线**（experiment 分支）：前端验收 tag `phase-2.1-pony-ui-accepted` @ `3360287`；后端 mock SSE tag `phase-2.2-mock-sse-backend` @ `741c181`。下一入口 Batch E：`useMeetingEventStream`。主改 `frontend/`、`docs/`、`backend/`；**不修改** `roundtable/` / `app.py`。SSE 拉流：**`useMeetingEventStream`**；播放：**`useMeetingPlayer`**（不替换）。
 
 用户常要求 **只改 `app.py`** 时，不要动 `discussion.py` 收场、`synthesis.py` upsert、ChromaDB/OCR 核心。
 

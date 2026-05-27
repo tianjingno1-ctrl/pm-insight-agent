@@ -1,6 +1,6 @@
 # 进度追踪
 
-> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` · 文档 HEAD **`525cc93`** · 功能验收 **`3360287`**（tag `phase-2.1-pony-ui-accepted`）· main **`5d2bb24`**
+> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` @ **`741c181`** · tag **`phase-2.2-mock-sse-backend`** · Phase 2.1 功能 **`3360287`**（`phase-2.1-pony-ui-accepted`）· main **`5d2bb24`**
 
 ## 已完成
 
@@ -32,25 +32,37 @@
 
 **Tags**：`phase-2.1-pony-ui-polish` → `95fa3d6` · `phase-2.1-pony-ui-accepted` → `3360287`
 
-### Phase 2.2 Batch A — 架构决策文档（**本批，仅 docs**）
+### Phase 2.2 — FastAPI mock SSE backend
 
-- [x] `backend/` 目录策略（独立 FastAPI；非 `api/`、非 Next Route）
-- [x] SSE endpoint / `pace` / wire format / 分层模型
-- [x] `useMeetingEventStream` + 缓冲后播放 MVP
-- [x] Phase 2.2 不做清单与风险表
-- [x] 修复 `README_STRUCTURE.md`、`architecture.md` 漂移
+| Batch | Commit / Tag | 内容 |
+|-------|----------------|------|
+| A | `bf66604` | 架构决策文档（`backend/`、SSE 契约、批次计划） |
+| B | `855efd9` | FastAPI 骨架、`GET /health`、CORS、`backend/README` |
+| C | `741c181` | `GET /api/meetings/mock-stream`、scenarios、pytest |
+| C 验收 tag | **`phase-2.2-mock-sse-backend`** → `741c181` | Mock SSE 后端验收锚点 |
+| D | （本批，仅 docs） | 联调文档、双端口验收、protocolVersion 说明 |
+
+**Batch C 验收记录**
+
+- Endpoint：`GET /api/meetings/mock-stream?scenario=&pace=`
+- Scenarios：`default` / `concise` / `verbose` / `weak`
+- Tests：`py -3.12 -m pytest` → **15 passed**
+- curl：health `sse: "mock_stream"`；mock-stream 含 `meeting_started` / `speech` / `summary` / `meeting_done`
+- Errors：`scenario=unknown` → 400；`pace=0.1` / `pace=5` → 422
+- Wire：无自定义 SSE `event:`；无顶层 `timestamp` / `metadata`
+- `protocolVersion`：**`"1.0"`**（MeetingEvent 契约版本，非项目 Phase 编号）
 
 ## 进行中
 
-- [ ] **Phase 2.2 Batch B** — FastAPI 骨架 + `/health`
-- [ ] **Phase 2.2 Batch C** — mock-stream + scenarios + tests
-- [ ] **Phase 2.2 Batch D–F1** — 联调文档、SSE hook、env 数据源切换
+- [ ] **Phase 2.2 Batch D** — 联调文档锚点（本批）
+- [ ] **Phase 2.2 Batch E** — `useMeetingEventStream`（buffer 模式）
+- [ ] **Phase 2.2 Batch F1** — `NEXT_PUBLIC_MEETING_SOURCE` + 端到端
 
 ## 已知 gap
 
 | 项 | 状态 |
 |----|------|
-| `backend/` 目录 | Batch B 创建 |
+| 前端 SSE hook | Batch E 未开始 |
 | `reaction` mock/UI | 协议有；主 mock 无 |
 | `mockScenarios` UI 切换 | Phase 2.2.1 / F2 |
 | TS/Python mock 文案 | 手工对齐；漂移风险 |
@@ -59,36 +71,48 @@
 ## Phase 2 Roadmap
 
 - [x] **Phase 2.1** — Frontend mock + contract + acceptance
-- [ ] **Phase 2.2** — FastAPI/SSE mock backend + frontend stream hook
+- [ ] **Phase 2.2** — Mock SSE backend ✅（后端） + frontend stream hook（待 E）
 - [ ] **Phase 2.3** — `roundtable/` → `MeetingEvent` 适配器
 - [ ] **Phase 2.3.1** — Expert text polish
 - [ ] **Phase 2.4** — Streamlit downline decision
 
-### Phase 2.2 批次计划（实施顺序）
+### Phase 2.2 批次计划
 
-| Batch | 交付 |
-|-------|------|
-| A | 架构决策文档 ✅ |
-| B | `backend/` 骨架、`GET /health`、`backend/README` |
-| C | `GET /api/meetings/mock-stream`、scenarios、pytest |
-| D | curl/双端口/PowerShell 联调文档 |
-| E | `useMeetingEventStream`（buffer 至 `meeting_done`） |
-| F1 | `NEXT_PUBLIC_MEETING_SOURCE`、E2E 验证 |
-| 2.2.1 / F2 | dev-only Mock/SSE + scenario 控件 |
+| Batch | 状态 | 交付 |
+|-------|------|------|
+| A | ✅ | 架构决策文档 |
+| B | ✅ | `backend/` 骨架、`/health` |
+| C | ✅ | mock-stream、scenarios、tests、tag |
+| D | 🔄 | 联调文档（`docs/` + `backend/README.md`） |
+| E | ⏳ | `useMeetingEventStream` |
+| F1 | ⏳ | env 数据源切换 + E2E |
+| 2.2.1 / F2 | ⏳ | dev-only UI 切换 |
 
 ## 验证清单
 
-```bash
+```powershell
 # Streamlit（main）
 streamlit run app.py
 
-# Pony UI（默认 mock）
-cd frontend && npm run dev
+# Pony UI（默认 mock，端口 3000）
+cd frontend
+npm run dev
 
-# Phase 2.1 功能回滚点
-git checkout phase-2.1-pony-ui-accepted
+# Backend mock SSE（端口 8000，需 Python 3.11+）
+cd backend
+py -3.12 -m pip install -e ".[dev]"
+py -3.12 -m uvicorn app.main:app --reload --port 8000
 
-# Phase 2.2 Batch C+ SSE（示例，Batch D 细化）
+# 健康检查（应 sse: "mock_stream"）
 curl.exe http://127.0.0.1:8000/health
+
+# Mock SSE 流
 curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pace=1.0"
+
+# 后端测试
+py -3.12 -m pytest
+
+# 回滚锚点
+git checkout phase-2.1-pony-ui-accepted      # 前端功能验收
+git checkout phase-2.2-mock-sse-backend      # 后端 mock SSE
 ```

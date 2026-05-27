@@ -18,24 +18,30 @@
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | 文档 **HEAD `525cc93`**（Batch D）；功能验收 tag 见下 |
+| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **HEAD `741c181`**（Batch C mock SSE） |
 
 **Phase 2.1 tags（勿移动）**
 
 | Tag | Commit | 含义 |
 |-----|--------|------|
 | `phase-2.1-pony-ui-polish` | `95fa3d6` | UI polish 完成点 |
-| `phase-2.1-pony-ui-accepted` | `3360287` | **功能验收**（含 hotfix）；Phase 2.1 回滚锚点 |
+| `phase-2.1-pony-ui-accepted` | `3360287` | **前端功能验收**；Pony UI 回滚锚点 |
 
-> `525cc93` 为 Phase 2.1 文档交接，**不改变** `phase-2.1-pony-ui-accepted` 含义。
+**Phase 2.2 backend SSE tag（勿移动）**
+
+| Tag | Commit | 含义 |
+|-----|--------|------|
+| `phase-2.2-mock-sse-backend` | `741c181` | **Mock SSE 后端验收**；`/health` + `/api/meetings/mock-stream` |
+
+> `525cc93` = Phase 2.1 文档交接 · `bf66604` = 2.2 架构文档 · `855efd9` = 2.2 骨架 · `741c181` = 2.2 mock SSE 代码 + 验收 tag。
 
 ### 当前阶段（2026-05-27）
 
 ```text
 ✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
-✅ Phase 2.1 Pony 前端闭环 + 文档锚点（Batch D @ 525cc93）
-✅ Phase 2.2 Batch A — FastAPI/SSE 架构决策文档（backend/ 仍未创建）
-⏳ Phase 2.2 Batch B+ — backend 代码 + 前端 SSE hook
+✅ Phase 2.1 Pony 前端（tag phase-2.1-pony-ui-accepted @ 3360287）
+✅ Phase 2.2 mock SSE backend（tag phase-2.2-mock-sse-backend @ 741c181）
+⏳ Phase 2.2 Batch E — 前端 useMeetingEventStream（未开始）
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
 ```
@@ -46,8 +52,55 @@
 |------|------|------|
 | 旧 Streamlit UI | `streamlit run app.py` | 8501 |
 | Pony UI | `cd frontend && npm run dev` | 3000 |
-| Mock SSE API（Batch B+） | `cd backend && uvicorn app.main:app --reload` | **8000** |
+| Mock SSE API | 见下方「Backend 启动」 | **8000** |
 | CLI 报告/PRD | `python main.py` | — |
+
+#### Backend 启动（Windows，Python 3.11+）
+
+默认 `python` 若为 3.8，请用 **`py -3.12`**（与 `backend/README.md` 一致）：
+
+```powershell
+cd backend
+py -3.12 -m pip install -e ".[dev]"
+py -3.12 -m uvicorn app.main:app --reload --port 8000
+```
+
+健康检查（新进程应返回 `"sse":"mock_stream"`）：
+
+```powershell
+curl.exe http://127.0.0.1:8000/health
+```
+
+Mock SSE 流：
+
+```powershell
+curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pace=1.0"
+```
+
+#### 双端口本地联调（Batch D）
+
+| 终端 | 命令 | 验证 |
+|------|------|------|
+| 1 | `cd backend` → `py -3.12 -m uvicorn app.main:app --reload --port 8000` | `curl.exe http://127.0.0.1:8000/health` |
+| 2 | `cd frontend` → `npm run dev` | 浏览器 `http://localhost:3000`（仍为 mockEvents，至 Batch E） |
+
+**端口冲突**：若 8000 已被旧 uvicorn 占用（`[Errno 10048]`），先结束旧进程再启动，否则 `/health` 可能仍显示 `"sse":"not_implemented"` 且 mock-stream 404。
+
+```powershell
+# 查看占用（可选）
+Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess
+```
+
+#### Mock SSE curl 验收清单（已通过 @ `741c181`）
+
+| 检查 | 命令 / 预期 |
+|------|-------------|
+| 流内容 | `curl.exe -N ".../mock-stream?scenario=default&pace=1.0"` 含 `"type":"meeting_started"`、`speech`、`summary`、`meeting_done` |
+| 禁止项 | 输出中无 `event: speech`、无顶层 `"timestamp"` / `"metadata"` |
+| `protocolVersion` | 仅 `meeting_started` 上出现 **`"1.0"`**（MeetingEvent 契约版本，≠ 项目 Phase 2.1） |
+| 400 | `curl.exe -i "...?scenario=unknown"` |
+| 422 | `curl.exe -i "...?pace=0.1"` 或 `pace=5` |
+| pytest | `cd backend` → `py -3.12 -m pytest` → 15 passed |
 
 ### 修改边界（评审/开发必守）
 
@@ -308,15 +361,15 @@ flowchart TB
 
 ### 六、Phase 2.2 实施批次
 
-| Batch | 目标 | 范围 |
+| Batch | 状态 | 目标 |
 |-------|------|------|
-| **A** | 架构决策文档 | `docs/`、`README_STRUCTURE.md` |
-| **B** | FastAPI 骨架 + `/health` + `backend/README` | `backend/` |
-| **C** | mock-stream + scenarios + tests | `backend/` |
-| **D** | SSE 调试 / 双端口联调文档 | `docs/` |
-| **E** | `useMeetingEventStream`（buffer） | `frontend/hooks/` |
-| **F1** | `NEXT_PUBLIC_MEETING_SOURCE` + E2E | `frontend/` |
-| **2.2.1 / F2** | dev-only source/scenario UI | `frontend/` |
+| **A** | ✅ `bf66604` | 架构决策文档 |
+| **B** | ✅ `855efd9` | FastAPI 骨架 + `/health` |
+| **C** | ✅ `741c181` + tag `phase-2.2-mock-sse-backend` | mock-stream + scenarios + tests |
+| **D** | 🔄 文档 | 联调 / 验收锚点（本批） |
+| **E** | ⏳ | `useMeetingEventStream`（buffer） |
+| **F1** | ⏳ | `NEXT_PUBLIC_MEETING_SOURCE` + E2E |
+| **2.2.1 / F2** | ⏳ | dev-only source/scenario UI |
 
 ---
 
@@ -344,4 +397,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 Phase 2.2 Batch A · 文档 HEAD `525cc93` · 功能验收 tag `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
+*交接包版本：2026-05-27 Phase 2.2 · HEAD `741c181` · tag `phase-2.2-mock-sse-backend` · 前端 tag `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*

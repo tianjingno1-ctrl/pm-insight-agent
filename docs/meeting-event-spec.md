@@ -272,6 +272,7 @@ meeting_started → speech / reaction (…) → summary → meeting_done → con
 
 - Send **`protocolVersion` only on `meeting_started`** (e.g. `"1.0"`).
 - Do not repeat on every event.
+- **Meaning**: `protocolVersion` is the **MeetingEvent wire contract version**, not the project phase number (e.g. Phase 2.1 / 2.2). Do **not** set it to `"2.1"` unless this document is intentionally bumped.
 - Protocol upgrades: update this document first, then `frontend/lib/types.ts` and backend Pydantic.
 
 ### Control events in Phase 2.2 mock
