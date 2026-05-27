@@ -1,137 +1,264 @@
 # AI 会话交接包
 
-> **用法**：新开 Cursor/Chat 窗口时，将本文全文粘贴为第一条消息。  
-> 说「更新交接包」可让 Cursor 按 `.cursorrules` 刷新 `docs/`。
+> **用途**：粘贴给新 AI / 外部评估者，用于**续接开发**或**方案评审**。  
+> 维护方式：对 Cursor 说「更新交接包」→ 按 `.cursorrules` 刷新 `docs/`。
 
 ---
 
 ## 复制给新 AI 的提示词（从这里开始）
 
-你是 **pm-insight-agent** 项目的续接开发者。请严格基于下列上下文工作，不要臆造未实现功能。
+你是 **pm-insight-agent** 项目的续接开发者或方案评审 AI。请严格基于下列上下文工作，不要臆造未实现功能。
 
-### 项目是什么
+### 项目是什么（一句话）
 
-面向产品经理的 **AI 专家圆桌**（Streamlit）。用户提问 → 自动选 3–4 名专家 → 主持人开场 → 专家短发言 → 主持人收场 **固定三行小结** → 可追问多轮 → 手动沉淀到 `memory/*.md`。
-
-启动：`streamlit run app.py`（不是 `main.py`，除非做 CLI 报告）。
+**面向产品经理的 AI 专家圆桌**：用户提需求 → 多专家短发言 → 主持人固定三行小结 → 可追问 → 可沉淀长期记忆；正在从 **Streamlit 原型** 演进为 **小马 AI 风格 Next.js 前端 + 未来 FastAPI/SSE 后端** 的 monorepo。
 
 ### 当前 Git 锚点
 
-- 最新 commit：`d9f80aa` — `修复消息重建与小结识别，待修summary正式渲染变量`
-- 标签：`phase-1.5-before-summary-render-final`
-- 工作区：提交时应为 clean（换会话前先 `git status`）
+| 分支 | 说明 | 锚点 |
+|------|------|------|
+| `main` | Streamlit Phase 1.5 已封版 | commit `5d2bb24`，tag `phase-1.5-summary-done` |
+| `experiment/pony-roundtable-ui` | 小马圆桌前端 Mock（**当前主开发线**） | commit `27bdeff` |
 
-### 当前进度（一句话）
+旧 tag（历史）：`phase-1.5-before-summary-render-final`（`d9f80aa` 时代）
 
-重复小结已修；summary 识别与 `force_summary_markdown` 在 DEBUG 下已验证；**待确认**正式 `st.markdown(normalized_content)` 与 `st.code` 一致，然后 `DEBUG_SUMMARY=False`。
+### 当前阶段（2026-05-27）
 
-### 下一步优先任务（P0）
-
-1. 保持 `DEBUG_SUMMARY=True`，跑一轮，确认边框内小结为：
-   ```markdown
-   ## 本轮小结
-   - 当前倾向：...
-   - 最大分歧：...
-   - 下一步建议：...
-   ```
-2. 若 `st.code` 对、边框内仍见「当前趋势 / 最大封闭」，查是否 **另一条 expert 消息** 夹带旧格式（非 summary 分支）
-3. 通过后改 `DEBUG_SUMMARY=False`，commit
-
-### P1（随后）
-
-- Phase 1.5.4：专家文本强清洗（`polish_discussion_text`、词表）
-- 勿在本阶段改：ChromaDB、讨论中自动 memory、大改 discussion 收场逻辑
-
-### 核心文件与函数
-
-| 文件 | 关键符号 |
-|------|----------|
-| `app.py` | `main`, `run_discussion_streaming`, `_render_message_list`, `_rebuild_messages_from_session`, `_dedupe_summary_messages`, `_turn_to_message`, `_looks_like_summary_message`, `DEBUG_SUMMARY` |
-| `roundtable/discussion.py` | `run_expert_round`, `run_moderator_opening`, `run_moderator_closing`, `force_summary_markdown`, `sanitize_discussion_text`, `polish_discussion_text` |
-| `roundtable/session.py` | `RoundtableSession`, `add_turn`, `save_session`, `extract_text_from_image_bytes` |
-| `roundtable/synthesis.py` | `update_memory_files`, `_upsert_memory_file`, `synthesize_roundtable_report` |
-| `roundtable/moderator.py` | `classify_user_interruption`, `generate_round_summary`（非 Streamlit 主路径） |
-
-### summary 渲染正确写法（app.py）
-
-```python
-if is_summary:
-    normalized_content = force_summary_markdown(msg.get("content") or "")
-    if DEBUG_SUMMARY:
-        st.caption("调试：摘要已规范化")
-        st.code(normalized_content, language="markdown", key=f"rt_summary_code_{i}")
-    with st.container(border=True):
-        st.markdown(normalized_content, key=f"rt_summary_md_{i}")
-    continue
+```text
+✅ Streamlit 圆桌 MVP + 小结去重/识别/force 格式化（main 已封，DEBUG 已关）
+✅ monorepo 边界文档 + MeetingEvent 协议
+✅ Next.js 前端 Mock（mockEvents + useMeetingPlayer）
+⏳ 后端 FastAPI/SSE 未建
+⏳ 前端未接真实 roundtable 逻辑
+❌ ChromaDB / 向量 RAG 未接入
 ```
 
-**禁止**在 summary 分支正式渲染使用 `msg["content"]` 或未规范化的 `content`。
+### 启动命令
 
-### 数据流备忘
+| 目标 | 命令 | 端口 |
+|------|------|------|
+| 旧 Streamlit UI | `streamlit run app.py` | 8501 |
+| 新 Pony UI Mock | `cd frontend && npm run dev` | 3000 |
+| CLI 报告/PRD | `python main.py` | — |
 
-```
-用户输入 → run_discussion_streaming
-  → opening → experts → closing(add_turn 主持人（总结）)
-  → _rebuild_messages_from_session → rerun
-  → _render_message_list(_dedupe_summary_messages(messages))
-```
+### 修改边界（评审/开发必守）
+
+1. **`experiment/pony-roundtable-ui` 分支**：主改 `frontend/`、`docs/`；**不重构** `app.py`、`roundtable/`
+2. **`main` 分支 Streamlit**：仅 bugfix，不大改 discussion 收场逻辑
+3. 长期记忆：**仅按钮写入** `memory/*.md`，讨论中不自动写
+4. 未来后端 SSE 必须兼容 `docs/meeting-event-spec.md` 的 `MeetingEvent`
+
+### 下一步 P0（前端线）
+
+1. 打磨 Pony UI 播放体验（情绪、动作、布局）
+2. 设计 `backend/` FastAPI 骨架，SSE 推送 `MeetingEvent`
+3. `useMeetingPlayerFromSSE` 替换 mock 事件源，UI 组件不动
+
+### 下一步 P1（后端复用）
+
+1. 将 `roundtable/discussion.py` 包装为 API（专家发言、收场小结）
+2. `force_summary_markdown` 输出映射为 `MeetingEvent.type=summary`
+3. Phase 1.5.4：专家文本强清洗（`polish_discussion_text`）
 
 ### 详细文档
 
 - 架构：`docs/architecture.md`
 - 进度：`docs/progress.md`
 - 决策/坑：`docs/decisions.md`
-
-### 对你的要求
-
-1. 先读相关文件再改，最小 diff
-2. 用户说「只改 app.py」时遵守
-3. 用中文回复用户
-4. 改完后如用户要求可更新交接包
+- 事件协议：`docs/meeting-event-spec.md`
+- Monorepo 规则：`README_STRUCTURE.md`
 
 ---
 
-## 核心函数速查（自动生成）
+## 项目文件结构树（带模块说明）
 
-### app.py（38 个）
+> 树中 `[技术]` = 主要技术栈，`[关联]` = 主要依赖/数据流向。  
+> `agents_library/` 仅列顶层（内含大量第三方 agent markdown，非自研核心）。
 
-`_read_memory_file`, `_default_round_goal`, `_turn_role`, `_turn_content`, `_speaker_key_from_expert`, `_speaker_key_from_role_text`, `_target_speaker_keys`, `_fallback_expert`, `_pick_expert_for_key`, `_prepare_expert_panel`, `_match_expert_for_turn`, `_display_for_speaker_key`, `_message_user`, `_message_moderator`, `_message_summary`, `_message_expert`, `_looks_like_summary_message`, `_is_summary_message`, `_dedupe_summary_messages`, `_rebuild_messages_from_session`, `_turn_to_message`, `_limit_experts`, `_extract_display_messages`, `_append_new_turns_to_messages`, `_build_memory_report`, `_latest_summary_for_memory`, `_persist_to_long_term_memory`, `_render_messages`（遗留）, `run_discussion_streaming`, `_enrich_question`, `render_memory_panel`, `render_sidebar`, `_render_memory_save_controls`, `_render_message_list`, `main`
-
-### roundtable/discussion.py（34 个）
-
-`force_summary_markdown`, `sanitize_discussion_text`, `polish_discussion_text`, `run_expert_round`, `run_moderator_opening`, `run_moderator_closing`, `format_round_summary`, `has_bad_language`, …
-
-### roundtable/session.py
-
-`DiscussionTurn`, `RoundtableSession`, `create_session`, `save_session`, `load_session`, `add_turn`, `update_context`, `format_turns_for_prompt`, `extract_text_from_image_bytes`
-
-### roundtable/synthesis.py
-
-`synthesize_roundtable_report`, `update_memory_files`, `generate_prd_only`, `_upsert_memory_file`
-
-### roundtable/moderator.py
-
-`classify_user_interruption`, `generate_round_summary`
+```text
+pm-insight-agent/                          # monorepo 根
+│
+├── app.py                                   # [Streamlit] 旧版 Web UI 主入口
+│   │                                        # 职责：多轮追问、消息列表渲染、memory 按钮、OCR 附件
+│   │                                        # [关联] → roundtable/*, core/llm, memory/
+│   │                                        # 状态：legacy，仅 bugfix
+│   │
+├── main.py                                  # [Python CLI] 命令行圆桌 + 报告/PRD
+│   │                                        # 职责：交互式讨论、SUMMARY/PRD/END 命令
+│   │                                        # [关联] → roundtable/*, synthesis, moderator（CLI 路径）
+│   │                                        # 状态：并行存在，非 Streamlit 主路径
+│   │
+├── project_context.md                       # [Markdown] 项目背景，注入专家 prompt
+├── requirements.txt                         # [pip] Python 依赖（Streamlit, LangChain, pytesseract…）
+├── README.md                                # 用户安装/运行说明
+├── README_STRUCTURE.md                      # [文档] monorepo 目录归属与改动的硬性规则
+├── .cursorrules                             # Cursor：「更新交接包」等自动化规则
+├── .env / .env.example                      # LLM API Key、LLM_PROVIDER
+│
+├── core/                                    # Python 基础设施层
+│   ├── llm.py                               # [LangChain/OpenAI 兼容] get_llm, check_api_key
+│   │                                        # [关联] ← app.py, main.py, roundtable/*
+│   ├── utils.py                             # read_project_context, 敏感词检查等
+│   └── report.py                            # 报告文件读写（CLI output）
+│
+├── roundtable/                              # ★ 圆桌核心业务逻辑（Python，未来 backend 复用）
+│   ├── discussion.py                        # 专家发言、主持人开/收场、文本清洗、force_summary_markdown
+│   │                                        # [关联] ← app.run_discussion_streaming, main.py
+│   │                                        # [技术] LLM prompt + JSON 收场 + 错词表
+│   ├── session.py                           # RoundtableSession, turns, save/load JSON, OCR
+│   │                                        # [关联] ← discussion, app, synthesis；→ memory/sessions/*.json
+│   ├── synthesis.py                         # 长报告、PRD、update_memory_files（md upsert）
+│   │                                        # [关联] ← app 沉淀按钮, main.py PRD
+│   ├── expert_selector.py                   # auto_select_experts（LLM 选题 + discussion_plan）
+│   │                                        # [关联] ← app.run_discussion_streaming
+│   ├── agent_loader.py                      # 从 agents_library 加载 ExpertAgent
+│   ├── agent_registry.py                    # AgentRegistry 分类检索
+│   └── moderator.py                         # 打断分类、旧版阶段性小结（CLI 遗留，非 app 主路径）
+│
+├── memory/                                  # 持久化数据（非向量库）
+│   ├── insights.md                          # 长期：一句话结论
+│   ├── decisions.md                         # 长期：决策
+│   ├── todos.md                             # 长期：待办
+│   ├── open_questions.md                    # 长期：未决问题
+│   ├── memory_loader.py                     # 加载 memory 注入 prompt
+│   └── sessions/                            # 每轮讨论 JSON 存档（RoundtableSession 序列化）
+│       └── YYYYmmdd_HHMMSS.json
+│
+├── docs/                                    # 产品与协议文档（可自由更新）
+│   ├── handoff.md                           # ★ 本文件：AI 会话交接
+│   ├── architecture.md                      # 架构说明
+│   ├── progress.md                          # 进度追踪
+│   ├── decisions.md                         # 设计决策与已知坑
+│   └── meeting-event-spec.md                # MeetingEvent 协议（前端 mock ↔ 未来 SSE 共用）
+│
+├── frontend/                                # ★ 新 UI（Next.js，experiment 分支主开发区）
+│   ├── app/
+│   │   ├── page.tsx                         # 入口 → RoundTableScene
+│   │   ├── layout.tsx                       # 根布局、metadata
+│   │   └── globals.css                      # 浅色渐变背景
+│   ├── components/
+│   │   ├── RoundTableScene.tsx              # 主场景：圆桌布局 + 输入 + 播放控制
+│   │   ├── PonyAgent.tsx                    # 单角色头像、情绪环、speaking 动画
+│   │   ├── SpeechBubble.tsx                 # 头顶气泡（Framer Motion spring）
+│   │   ├── MeetingInput.tsx                 # 用户问题输入
+│   │   └── SummaryCard.tsx                  # 三行小结卡片
+│   ├── hooks/
+│   │   └── useMeetingPlayer.ts              # ★ 事件播放状态机（mock；未来换 SSE 源）
+│   ├── lib/
+│   │   ├── types.ts                         # MeetingEvent / AgentId 类型
+│   │   └── mockEvents.ts                    # mock 一场圆桌 + agents 配置
+│   ├── package.json                         # [Next 16, React, Tailwind, framer-motion]
+│   └── (node_modules/, .next/ 不提交 git)
+│
+├── agents_library/                          # 外部 agent 定义库（markdown persona）
+│   └── agency-agents/                       # 按 design/engineering/marketing… 分类
+│       └── …                                # [关联] → agent_loader.py 读取
+│
+├── output/                                  # CLI 生成的报告输出目录
+│
+└── backend/                                 # （未创建）未来 FastAPI + SSE
+                                             # 应复用 roundtable/，emit MeetingEvent
+```
 
 ---
 
-## 最近完成（摘要）
+## 模块关系图（评估用）
 
-- 消息全量重建 + 小结去重
-- summary 识别放宽 + `_turn_to_message` 映射 `type=summary`
-- `force_summary_markdown` 在 dedupe/render/重建三处统一调用
-- summary 渲染改用 `normalized_content` + Streamlit widget key
+```mermaid
+flowchart TB
+    subgraph UI["表现层"]
+        ST[app.py Streamlit]
+        FE[frontend/ Next.js Mock]
+        CLI[main.py CLI]
+    end
+
+    subgraph RT["roundtable/ 业务层"]
+        DIS[discussion.py]
+        SES[session.py]
+        SYN[synthesis.py]
+        EXP[expert_selector.py]
+        AG[agent_loader + registry]
+    end
+
+    subgraph CORE["core/"]
+        LLM[llm.py]
+    end
+
+    subgraph DATA["数据层"]
+        MEM[memory/*.md]
+        JSON[memory/sessions/*.json]
+    end
+
+    subgraph PROTO["协议层"]
+        SPEC[docs/meeting-event-spec.md]
+        HOOK[useMeetingPlayer.ts]
+    end
+
+    ST --> DIS & EXP & SES & SYN
+    CLI --> DIS & SES & SYN
+    FE --> HOOK
+    HOOK -.->|未来 SSE| SPEC
+    DIS & EXP --> LLM
+    DIS --> SES
+    SES --> JSON
+    SYN --> MEM
+    ST --> MEM
+    AG --> DIS & EXP
+    DIS -.->|force_summary → summary event| SPEC
+```
+
+---
+
+## 双轨 UI 对照（评审重点）
+
+| 维度 | Streamlit `app.py` | Next.js `frontend/` |
+|------|-------------------|---------------------|
+| 状态 | main 封版，legacy | experiment 分支，主开发 |
+| 事件模型 | Python dict messages | `MeetingEvent` TS 类型 |
+| 小结格式 | `force_summary_markdown` → markdown 三行 | `SummaryCard` direction/disagreement/nextStep |
+| 播放 | 静态列表一次性渲染 | `useMeetingPlayer` 定时播放 |
+| 后端 | 进程内直接调 roundtable | 尚无 backend，纯 mock |
+| 迁移策略 | 保留至 backend 就绪 | UI 不动，只换 hook 事件源 |
+
+---
+
+## 核心函数速查
+
+### app.py（Streamlit）
+
+`run_discussion_streaming`, `_render_message_list`, `_rebuild_messages_from_session`, `_dedupe_summary_messages`, `_turn_to_message`, `_looks_like_summary_message`, `DEBUG_SUMMARY=False`
+
+### roundtable/discussion.py
+
+`run_expert_round`, `run_moderator_opening`, `run_moderator_closing`, `force_summary_markdown`, `sanitize_discussion_text`, `polish_discussion_text`
+
+### frontend/hooks/useMeetingPlayer.ts
+
+暴露：`currentEvent`, `currentEventId`, `summary`, `isPlaying`, `hasStarted`, `start()`, `pause()`, `reset()`
 
 ---
 
 ## 已知注意事项
 
-1. `DEBUG_SUMMARY` 当前为 **True**（`app.py` 第 58 行附近）
-2. 不要用 `_render_messages` 动态重绘主历史
+1. `DEBUG_SUMMARY = False`（main 已封版）
+2. 旧 Streamlit 勿用 `_render_messages` 动态重绘（setIn 错位）
 3. memory 仅按钮写入；session JSON 在 `memory/sessions/`
-4. 专家文本质量差 → Phase 1.5.4，不是小结 bug
-5. summary 正式渲染必须用 `normalized_content`，不能用 `msg["content"]`（DEBUG 下 `st.code` 已验证正确，但边框内 `st.markdown` 可能仍用旧变量）
+4. 专家文本质量 → Phase 1.5.4，与小结格式无关
+5. summary 渲染用 `normalized_content`，禁止 `msg["content"]` 直接 markdown
+6. `frontend/` 播放逻辑**只在** `useMeetingPlayer.ts`，UI 组件禁止散落 `setTimeout`
+7. 运行 Streamlit 前确认 Python 环境：`python -m streamlit --version`（避免 3.8 全局旧版）
 
 ---
 
-*交接包版本：2026-05-26 · 与 commit d9f80aa 对齐*
+## 给方案评审 AI 的评估清单
+
+1. **Monorepo 边界**是否合理？（`README_STRUCTURE.md`）
+2. **MeetingEvent 协议**是否足够支撑 SSE 与 mock 对齐？
+3. **useMeetingPlayer 隔离**是否利于后端接入而不重写 UI？
+4. **roundtable/ 复用**路径是否清晰（discussion → API → SSE → frontend）？
+5. **Streamlit 遗留**何时下线？建议：backend + SSE 跑通后再弃
+6. **风险点**：专家文本质量、无向量记忆、双 UI 维护成本
+
+---
+
+*交接包版本：2026-05-27 · 分支 `experiment/pony-roundtable-ui` @ `27bdeff` · main @ `5d2bb24`*

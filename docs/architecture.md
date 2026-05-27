@@ -1,24 +1,29 @@
 # 架构说明
 
-> 最后更新：2026-05-26 · 对应 commit `d9f80aa`
+> 最后更新：2026-05-27 · main `5d2bb24` · experiment `27bdeff`
 
 ## 项目定位（一句话）
 
-**面向产品经理的 AI 专家圆桌系统**：用户输入需求/追问，多位虚拟专家轮流发言，主持人收场输出固定三行小结，并可手动沉淀到 Markdown 长期记忆。
+**面向产品经理的 AI 专家圆桌**：Streamlit 原型已封版；正在 monorepo 内建设 **Next.js 小马风格 UI Mock**，未来以 **FastAPI/SSE + MeetingEvent 协议** 对接既有 `roundtable/` Python 逻辑。
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| UI | Streamlit 1.40（`streamlit run app.py`） |
-| LLM | LangChain + OpenAI 兼容 API（DeepSeek 默认，见 `core/llm.py`） |
-| 专家编排 | 自研 `roundtable/`（非 CrewAI 主路径） |
-| 会话持久化 | JSON 文件 `memory/sessions/{session_id}.json` |
-| 长期记忆 | Markdown 文件 `memory/*.md`（非向量库） |
-| 图片输入 | pytesseract OCR（`session.extract_text_from_image_bytes`） |
-| CLI 入口 | `main.py`（报告/PRD 生成，与 Streamlit 并行存在） |
+| 旧 UI | Streamlit 1.40（`app.py`，legacy bugfix only） |
+| 新 UI | Next.js 16 + TypeScript + Tailwind + Framer Motion（`frontend/`） |
+| 事件协议 | `MeetingEvent`（`docs/meeting-event-spec.md`） |
+| LLM | LangChain + OpenAI 兼容 API（DeepSeek 默认，`core/llm.py`） |
+| 业务逻辑 | 自研 `roundtable/`（未来 `backend/` 复用） |
+| 会话持久化 | JSON `memory/sessions/` |
+| 长期记忆 | Markdown `memory/*.md`（非向量库） |
+| CLI | `main.py`（报告/PRD，与 Streamlit 并行） |
 
-**当前阶段未接入**：ChromaDB / 向量 RAG、自动写入 memory（仅按钮触发）。
+**未接入**：ChromaDB、FastAPI backend、SSE 实时流。
+
+## 完整结构树
+
+详见 **`docs/handoff.md`** 中的「项目文件结构树」与「模块关系图」（供 AI 评估用）。
 
 ## 目录结构与职责
 
