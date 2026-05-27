@@ -55,7 +55,7 @@ MEMORY_FILES = {
 USER_ROLES = frozenset({"用户", "你", "用户补充"})
 
 # 小结渲染调试（验证通过后设为 False）
-DEBUG_SUMMARY = True
+DEBUG_SUMMARY = False
 
 # 固定角色展示（avatar 必须为 emoji 字符串，勿用 name 首字母）
 ROLE_DISPLAY: Dict[str, Tuple[str, str]] = {
