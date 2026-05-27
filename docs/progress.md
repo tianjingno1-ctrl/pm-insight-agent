@@ -1,6 +1,6 @@
 # 进度追踪
 
-> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` @ **`741c181`** · tag **`phase-2.2-mock-sse-backend`** · Phase 2.1 功能 **`3360287`**（`phase-2.1-pony-ui-accepted`）· main **`5d2bb24`**
+> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` · Phase 2.2 **Accepted** · 功能闭环 **`6cb4ef9`** · 最终 tag **`phase-2.2-sse-mock-integration`** · Phase 2.1 **`3360287`** · main **`5d2bb24`**
 
 ## 已完成
 
@@ -32,61 +32,65 @@
 
 **Tags**：`phase-2.1-pony-ui-polish` → `95fa3d6` · `phase-2.1-pony-ui-accepted` → `3360287`
 
-### Phase 2.2 — FastAPI mock SSE backend
+### Phase 2.2 — Mock SSE integration（**已收口**）
 
 | Batch | Commit / Tag | 内容 |
 |-------|----------------|------|
-| A | `bf66604` | 架构决策文档（`backend/`、SSE 契约、批次计划） |
-| B | `855efd9` | FastAPI 骨架、`GET /health`、CORS、`backend/README` |
-| C | `741c181` | `GET /api/meetings/mock-stream`、scenarios、pytest |
-| C 验收 tag | **`phase-2.2-mock-sse-backend`** → `741c181` | Mock SSE 后端验收锚点 |
-| D | （本批，仅 docs） | 联调文档、双端口验收、protocolVersion 说明 |
+| A | `bf66604` | 架构决策文档 |
+| B | `855efd9` | FastAPI 骨架、`GET /health`、CORS |
+| C | `741c181` | mock-stream、scenarios、pytest |
+| C tag | **`phase-2.2-mock-sse-backend`** → `741c181` | 后端 mock SSE 验收 |
+| D | `7e5620c` | 联调 / 本地验收文档 |
+| E | `fa086f8` | `useMeetingEventStream`（buffer） |
+| F1 | `6cb4ef9` | `NEXT_PUBLIC_MEETING_SOURCE=mock\|sse`（默认 mock） |
+| F2 / Final | docs + **`phase-2.2-sse-mock-integration`** | 端到端验收归档 |
 
-**Batch C 验收记录**
+**Phase 2.2 Final 验收（2026-05-27）**
 
-- Endpoint：`GET /api/meetings/mock-stream?scenario=&pace=`
-- Scenarios：`default` / `concise` / `verbose` / `weak`
-- Tests：`py -3.12 -m pytest` → **15 passed**
-- curl：health `sse: "mock_stream"`；mock-stream 含 `meeting_started` / `speech` / `summary` / `meeting_done`
-- Errors：`scenario=unknown` → 400；`pace=0.1` / `pace=5` → 422
-- Wire：无自定义 SSE `event:`；无顶层 `timestamp` / `metadata`
-- `protocolVersion`：**`"1.0"`**（MeetingEvent 契约版本，非项目 Phase 编号）
+| 项 | 结果 |
+|----|------|
+| Backend pytest | **15 passed** |
+| Frontend `npm run build` | passed |
+| Frontend `npm run lint` | passed |
+| Mock 默认模式（无 env） | passed — 原 mock UI，不需 backend，无 EventSource |
+| SSE opt-in（`NEXT_PUBLIC_MEETING_SOURCE=sse`） | passed — 缓冲至 `meeting_done` 后播放 |
+| 默认数据源 | **mock** |
+| 边收边播 | 未实现（刻意） |
+| 真实 LLM | 未接入 |
+| `protocolVersion` | **`"1.0"`**（MeetingEvent 契约，≠ 项目 Phase 编号） |
 
 ## 进行中
 
-- [ ] **Phase 2.2 Batch D** — 联调文档锚点（本批）
-- [ ] **Phase 2.2 Batch E** — `useMeetingEventStream`（buffer 模式）
-- [ ] **Phase 2.2 Batch F1** — `NEXT_PUBLIC_MEETING_SOURCE` + 端到端
+- [ ] **Phase 2.3** — `roundtable/` → `MeetingEvent` 适配器 + 真实流式（后续）
 
 ## 已知 gap
 
 | 项 | 状态 |
 |----|------|
-| 前端 SSE hook | Batch E 未开始 |
 | `reaction` mock/UI | 协议有；主 mock 无 |
-| `mockScenarios` UI 切换 | Phase 2.2.1 / F2 |
+| `mockScenarios` / source UI 切换 | Phase 2.2.1+ |
+| 边收边播 | Phase 2.3+ |
 | TS/Python mock 文案 | 手工对齐；漂移风险 |
 | 用户 `question` 不驱动剧本 | 至 Phase 2.3 |
 
 ## Phase 2 Roadmap
 
 - [x] **Phase 2.1** — Frontend mock + contract + acceptance
-- [ ] **Phase 2.2** — Mock SSE backend ✅（后端） + frontend stream hook（待 E）
+- [x] **Phase 2.2** — Mock SSE integration（tag `phase-2.2-sse-mock-integration`）
 - [ ] **Phase 2.3** — `roundtable/` → `MeetingEvent` 适配器
 - [ ] **Phase 2.3.1** — Expert text polish
 - [ ] **Phase 2.4** — Streamlit downline decision
 
-### Phase 2.2 批次计划
+### Phase 2.2 批次计划（已完成）
 
 | Batch | 状态 | 交付 |
 |-------|------|------|
-| A | ✅ | 架构决策文档 |
-| B | ✅ | `backend/` 骨架、`/health` |
-| C | ✅ | mock-stream、scenarios、tests、tag |
-| D | 🔄 | 联调文档（`docs/` + `backend/README.md`） |
-| E | ⏳ | `useMeetingEventStream` |
-| F1 | ⏳ | env 数据源切换 + E2E |
-| 2.2.1 / F2 | ⏳ | dev-only UI 切换 |
+| A–C | ✅ | backend mock SSE + tag `phase-2.2-mock-sse-backend` |
+| D | ✅ | 联调文档 |
+| E | ✅ | `useMeetingEventStream` |
+| F1 | ✅ | env `mock\|sse` 接线 |
+| F2 / Final | ✅ | 验收归档 + tag `phase-2.2-sse-mock-integration` |
+| 2.2.1+ | ⏳ | dev-only source/scenario UI（后续，非 2.2 范围） |
 
 ## 验证清单
 
@@ -97,6 +101,12 @@ streamlit run app.py
 # Pony UI（默认 mock，端口 3000）
 cd frontend
 npm run dev
+
+# Pony UI（SSE opt-in，需 backend :8000）
+# $env:NEXT_PUBLIC_MEETING_SOURCE="sse"
+# $env:NEXT_PUBLIC_MEETING_SCENARIO="default"
+# $env:NEXT_PUBLIC_MEETING_PACE="4.0"
+# npm run dev
 
 # Backend mock SSE（端口 8000，需 Python 3.11+）
 cd backend
@@ -114,5 +124,6 @@ py -3.12 -m pytest
 
 # 回滚锚点
 git checkout phase-2.1-pony-ui-accepted      # 前端功能验收
-git checkout phase-2.2-mock-sse-backend      # 后端 mock SSE
+git checkout phase-2.2-mock-sse-backend           # 仅后端 mock SSE
+git checkout phase-2.2-sse-mock-integration     # Phase 2.2 全链路验收
 ```

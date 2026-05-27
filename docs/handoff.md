@@ -18,7 +18,7 @@
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **HEAD `741c181`**（Batch C mock SSE） |
+| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **功能 `6cb4ef9`** · Phase 2.2 tag **`phase-2.2-sse-mock-integration`** |
 
 **Phase 2.1 tags（勿移动）**
 
@@ -27,21 +27,25 @@
 | `phase-2.1-pony-ui-polish` | `95fa3d6` | UI polish 完成点 |
 | `phase-2.1-pony-ui-accepted` | `3360287` | **前端功能验收**；Pony UI 回滚锚点 |
 
-**Phase 2.2 backend SSE tag（勿移动）**
+**Phase 2.2 tags（勿移动）**
 
 | Tag | Commit | 含义 |
 |-----|--------|------|
-| `phase-2.2-mock-sse-backend` | `741c181` | **Mock SSE 后端验收**；`/health` + `/api/meetings/mock-stream` |
+| `phase-2.2-mock-sse-backend` | `741c181` | **仅后端** mock SSE 验收 |
+| `phase-2.2-sse-mock-integration` | （docs commit 上） | **全链路** mock SSE integration 验收 |
 
-> `525cc93` = Phase 2.1 文档交接 · `bf66604` = 2.2 架构文档 · `855efd9` = 2.2 骨架 · `741c181` = 2.2 mock SSE 代码 + 验收 tag。
+> `6cb4ef9` = F1 env 接线 · `fa086f8` = SSE hook · `7e5620c` = Batch D 文档 · `741c181` = mock SSE backend。
 
 ### 当前阶段（2026-05-27）
 
 ```text
 ✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
 ✅ Phase 2.1 Pony 前端（tag phase-2.1-pony-ui-accepted @ 3360287）
-✅ Phase 2.2 mock SSE backend（tag phase-2.2-mock-sse-backend @ 741c181）
-⏳ Phase 2.2 Batch E — 前端 useMeetingEventStream（未开始）
+✅ Phase 2.2 Mock SSE integration（tag phase-2.2-sse-mock-integration）
+   · backend mock-stream @ 741c181
+   · frontend hook @ fa086f8 · env mock|sse @ 6cb4ef9
+   · 默认 mock；SSE 缓冲完成后播放
+⏳ Phase 2.3 — roundtable → MeetingEvent + 真实 LLM（未开始）
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
 ```
@@ -82,7 +86,10 @@ curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pac
 | 终端 | 命令 | 验证 |
 |------|------|------|
 | 1 | `cd backend` → `py -3.12 -m uvicorn app.main:app --reload --port 8000` | `curl.exe http://127.0.0.1:8000/health` |
-| 2 | `cd frontend` → `npm run dev` | 浏览器 `http://localhost:3000`（仍为 mockEvents，至 Batch E） |
+| 2 | `cd frontend` → `npm run dev`（默认 mock） | `http://localhost:3000` |
+| 2b | SSE：`$env:NEXT_PUBLIC_MEETING_SOURCE="sse"` 后 `npm run dev` | 需终端 1 backend；缓冲完成后播放 |
+
+详见 `frontend/README.md`（`NEXT_PUBLIC_MEETING_*`）。
 
 **端口冲突**：若 8000 已被旧 uvicorn 占用（`[Errno 10048]`），先结束旧进程再启动，否则 `/health` 可能仍显示 `"sse":"not_implemented"` 且 mock-stream 404。
 
@@ -102,6 +109,19 @@ Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Obje
 | 422 | `curl.exe -i "...?pace=0.1"` 或 `pace=5` |
 | pytest | `cd backend` → `py -3.12 -m pytest` → 15 passed |
 
+#### Phase 2.2 Final 验收（F2 @ 2026-05-27）
+
+| 检查 | 结果 |
+|------|------|
+| Integration commit（功能） | `6cb4ef9` |
+| Final tag | `phase-2.2-sse-mock-integration` |
+| Backend pytest | 15 passed |
+| Frontend build / lint | passed |
+| 默认 mock（无 `NEXT_PUBLIC_*`） | 原 UI；无 EventSource；不需 backend |
+| SSE opt-in | `NEXT_PUBLIC_MEETING_SOURCE=sse` → 缓冲至 `closed` 后播放 |
+| 边收边播 | 未实现 |
+| 真实 LLM | 未接入 |
+
 ### 修改边界（评审/开发必守）
 
 1. **`experiment/pony-roundtable-ui` 分支**：主改 `frontend/`、`docs/`；**不重构** `app.py`、`roundtable/`
@@ -109,17 +129,17 @@ Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Obje
 3. 长期记忆：**仅按钮写入** `memory/*.md`，讨论中不自动写
 4. 未来后端 SSE 必须兼容 `docs/meeting-event-spec.md` 的 `MeetingEvent`
 
-### 下一步 P0（Phase 2.2 — 架构已决，见 `docs/architecture.md`）
+### Phase 2.2 已交付（Accepted）
 
-| 项 | 决策 |
+| 项 | 状态 |
 |----|------|
-| 目录 | **`backend/`** FastAPI；不用顶层 `api/`；不改 `app.py` / `roundtable/` |
-| Endpoint | `GET /api/meetings/mock-stream?scenario=&pace=` |
-| SSE | `data:` = MeetingEvent JSON；无自定义 SSE `event:` 类型 |
-| 前端拉流 | **`useMeetingEventStream`** + 保留 **`useMeetingPlayer`** |
-| 播放 MVP | 缓冲后播放；`NEXT_PUBLIC_MEETING_SOURCE=mock\|sse`（默认 mock） |
+| `backend/` mock SSE | ✅ `741c181` / tag `phase-2.2-mock-sse-backend` |
+| `useMeetingEventStream` | ✅ `fa086f8` |
+| `NEXT_PUBLIC_MEETING_SOURCE=mock\|sse` | ✅ `6cb4ef9`（默认 **mock**） |
+| 缓冲后播放（非边收边播） | ✅ |
+| 全链路验收 tag | ✅ `phase-2.2-sse-mock-integration` |
 
-### 下一步 P1（Phase 2.3+）
+### 下一步 P0（Phase 2.3+）
 
 1. `roundtable/discussion.py` → `MeetingEvent[]` 适配器
 2. `force_summary_markdown` → `summary` 事件
@@ -368,8 +388,9 @@ flowchart TB
 | **C** | ✅ `741c181` + tag `phase-2.2-mock-sse-backend` | mock-stream + scenarios + tests |
 | **D** | ✅ `7e5620c` | 联调 / 验收锚点文档 |
 | **E** | ✅ `fa086f8` | `useMeetingEventStream`（buffer） |
-| **F1** | 🔄 | `NEXT_PUBLIC_MEETING_SOURCE` 接线（默认 mock） |
-| **2.2.1 / F2** | ⏳ | dev-only source/scenario UI |
+| **F1** | ✅ `6cb4ef9` | `NEXT_PUBLIC_MEETING_SOURCE`（默认 mock） |
+| **F2 / Final** | ✅ | 验收归档 + tag `phase-2.2-sse-mock-integration` |
+| **2.2.1+** | ⏳ | dev-only source/scenario UI（后续） |
 
 ---
 
@@ -397,4 +418,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 Phase 2.2 · HEAD `741c181` · tag `phase-2.2-mock-sse-backend` · 前端 tag `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
+*交接包版本：2026-05-27 Phase 2.2 **Accepted** · 功能 `6cb4ef9` · tags `phase-2.2-mock-sse-backend` + `phase-2.2-sse-mock-integration` · Phase 2.1 `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
