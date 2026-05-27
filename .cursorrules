@@ -1,0 +1,57 @@
+# pm-insight-agent · Cursor 规则
+
+## 语言与风格
+
+- 用户使用中文时，用中文回复。
+- 改代码：最小 diff、匹配现有风格；不要过度抽象或顺手改无关文件。
+
+## 会话交接包（重要）
+
+当用户说 **「更新交接包」** 时，自动执行：
+
+1. **扫描**以下文件的最新内容（含新增/删除的函数）：
+   - `app.py`
+   - `roundtable/discussion.py`
+   - `roundtable/session.py`
+   - `roundtable/synthesis.py`
+   - `roundtable/moderator.py`
+   - 可选：`roundtable/expert_selector.py`、`roundtable/agent_loader.py`、`main.py`
+
+2. **更新** `docs/architecture.md`：
+   - 项目定位、技术栈、目录职责
+   - 核心数据流、关键函数表
+   - 注明最后更新日期与当前 `git log -1 --oneline`（若可执行 git）
+
+3. **更新** `docs/progress.md`：
+   - 已完成 / 进行中 / 待做（P0/P1/P2）
+   - 验证清单
+
+4. **更新** `docs/decisions.md`：
+   - 设计决策及原因
+   - 已知问题表（问题 / 状态 / 处理）
+   - 修改边界（如「只改 app.py」）
+
+5. **重新生成** `docs/handoff.md`：
+   - 保留「复制给新 AI 的提示词」区块（可直接粘贴）
+   - 包含：Git 锚点、当前进度一句话、下一步 P0 任务
+   - 核心文件与函数速查表
+   - summary 渲染正确代码片段（若 app.py 有变则同步）
+   - 最近完成摘要、已知注意事项
+
+6. 完成后简短告知用户：已更新哪些文件，并提示「新开窗口请粘贴 `docs/handoff.md`」。
+
+## 项目上下文（固定）
+
+- 主 UI：`streamlit run app.py`
+- 圆桌逻辑：`roundtable/`，小结格式化：`force_summary_markdown`（discussion.py）
+- 长期记忆：Markdown `memory/*.md`，手动按钮写入；**非** ChromaDB
+- 当前阶段常见约束：小结问题优先改 `app.py` 渲染/识别；勿随意改 discussion 收场、memory upsert、OCR、ChromaDB
+
+## Git
+
+- 仅在用户明确要求时 `git commit` / `git push`
+- 不修改 git config；不用 `--no-verify` 除非用户要求
+
+## 调试开关
+
+- `app.py` 中 `DEBUG_SUMMARY`：小结渲染调试，验证通过后应为 `False`
