@@ -32,7 +32,7 @@
 | Tag | Commit | 含义 |
 |-----|--------|------|
 | `phase-2.2-mock-sse-backend` | `741c181` | **仅后端** mock SSE 验收 |
-| `phase-2.2-sse-mock-integration` | （docs commit 上） | **全链路** mock SSE integration 验收 |
+| `phase-2.2-sse-mock-integration` | `905bee6` | **全链路** mock SSE integration 验收 |
 
 > `6cb4ef9` = F1 env 接线 · `fa086f8` = SSE hook · `7e5620c` = Batch D 文档 · `741c181` = mock SSE backend。
 
