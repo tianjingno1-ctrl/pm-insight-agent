@@ -211,7 +211,7 @@ What the **current frontend** must support vs. what is **deferred**:
 
 ### Hook layer requirement (Phase 2.1a, code — documented here only)
 
-When `meeting_started` / `meeting_done` / `error` appear in the event list, `useMeetingPlayer` (and future `useMeetingPlayerFromSSE`) **must**:
+When `meeting_started` / `meeting_done` / `error` appear in the event list, `useMeetingPlayer` (fed by mock array or **`useMeetingEventStream`** buffer) **must**:
 
 - Advance the timeline without assuming every event is `speech`.
 - Not set `currentEvent` to a bubble-visible state for non-visual control events unless explicitly designed.
@@ -228,14 +228,78 @@ When `meeting_started` / `meeting_done` / `error` appear in the event list, `use
 
 ---
 
-## SSE backend requirements (Phase 2.2+)
+## SSE backend requirements (Phase 2.2 — decided)
 
-1. Emit `MeetingEvent` objects matching this spec (JSON).
-2. Set `protocolVersion: "1.0"` (or higher when negotiated).
-3. Prefer explicit `meeting_started` before first `speech` and `meeting_done` after final `summary` or last `speech`.
-4. On failure, emit `error` with populated `errorInfo`; do not send malformed partial blobs.
-5. Same field names and enum values as mock — **no parallel ad-hoc schema**.
+### HTTP endpoint
+
+```http
+GET /api/meetings/mock-stream?scenario=default&pace=1.0
+```
+
+| Query | Values | Notes |
+|-------|--------|-------|
+| `scenario` | `default` \| `concise` \| `verbose` \| `weak` | Unknown → **HTTP 400** |
+| `pace` | `0.25` … `4.0` (float) | Out of range → **HTTP 422**; default `1.0` |
+
+- **Use `pace`, not `delayMs`.** Larger `pace` → faster stream.
+- Suggested server timing: `effective_delay_ms = delay_before_ms / pace` (and scale `duration_ms` similarly where applicable).
+- Response: `Content-Type: text/event-stream`.
+
+### SSE wire format
+
+1. **Default SSE message only** — do **not** set custom SSE `event:` types (e.g. `event: speech`).
+2. Each frame is one compact JSON object in `data:` compatible with `MeetingEvent`.
+3. Business discriminant is **only** JSON `type` (`meeting_started`, `speech`, …).
+4. Frame shape:
+
+```text
+data: {"id":"evt_001","type":"speech",...}\n\n
+```
+
+5. Clients use `EventSource` `onmessage` / `message` only.
+
+### Recommended mock stream order
+
+```text
+meeting_started → speech / reaction (…) → summary → meeting_done → connection close
+```
+
+- **`summary`** = business outcome (decision card payload).
+- **`meeting_done`** = protocol end-of-stream signal.
+- **`summary` ≠ `meeting_done`.**
+
+### `protocolVersion`
+
+- Send **`protocolVersion` only on `meeting_started`** (e.g. `"1.0"`).
+- Do not repeat on every event.
+- Protocol upgrades: update this document first, then `frontend/lib/types.ts` and backend Pydantic.
+
+### Control events in Phase 2.2 mock
+
+- Mock SSE **must** emit `meeting_started` and `meeting_done` even if `frontend/lib/mockEvents.ts` omits them today.
+- UI may remain non-visual for these types (no role bubble).
+
+### Errors
+
+- In-stream: `type: "error"` with `errorInfo: { code, message, recoverable }`, then close or hold per policy.
+- Pre-stream: invalid `scenario` / `pace` → HTTP 400 / 422 JSON (no SSE body).
+
+### Contract alignment
+
+1. Emit objects matching this spec; **no** top-level `timestamp` or `metadata` in Phase 2.2.
+2. Backend Pydantic (`backend/app/models/meeting_event.py`) is a **local output validator**; fields must be a compatible subset of `frontend/lib/types.ts`.
+3. Prefer `model_config = ConfigDict(extra="forbid")` on backend models to catch drift.
+4. `action`, `emotion`, `targetId`, `uiHint` remain optional; backend mock need not emit `uiHint`.
+5. Same field names and enums as mock — **no parallel ad-hoc schema**.
+
+### Layering (see `docs/architecture.md`)
+
+| Layer | Examples |
+|-------|----------|
+| Protocol / transport | SSE lifecycle, `meeting_started`, `meeting_done`, close, HTTP errors |
+| Business | `speech`, `reaction`, `summary`, `error`, emotion/action/targetId |
+| UI playback | `useMeetingPlayer`, bubbles, SummaryCard, start/pause/resume/replay/reset |
 
 ---
 
-*Spec revision: Batch A contract docs · aligns with experiment branch Phase 2.1 planning*
+*Spec revision: Phase 2.2 Batch A · SSE mock backend architecture*

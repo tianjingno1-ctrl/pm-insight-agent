@@ -13,28 +13,29 @@
 
 **面向产品经理的 AI 专家圆桌**：用户提需求 → 多专家短发言 → 主持人固定三行小结 → 可追问 → 可沉淀长期记忆；正在从 **Streamlit 原型** 演进为 **小马 AI 风格 Next.js 前端 + 未来 FastAPI/SSE 后端** 的 monorepo。
 
-### 当前 Git 锚点（以仓库 **HEAD** 为准）
+### 当前 Git 锚点
 
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **`3360287`** — `fix(frontend): keep speech bubbles visible during playback` |
+| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | 文档 **HEAD `525cc93`**（Batch D）；功能验收 tag 见下 |
 
-**Phase 2.1 tags（experiment 分支，已推远程）**
+**Phase 2.1 tags（勿移动）**
 
 | Tag | Commit | 含义 |
 |-----|--------|------|
-| `phase-2.1-pony-ui-polish` | `95fa3d6` | Batch C UI polish 完成点 |
-| `phase-2.1-pony-ui-accepted` | `3360287` | **本地验收通过**（含 hotfix）；**推荐**作为 Phase 2.1 回滚锚点 |
+| `phase-2.1-pony-ui-polish` | `95fa3d6` | UI polish 完成点 |
+| `phase-2.1-pony-ui-accepted` | `3360287` | **功能验收**（含 hotfix）；Phase 2.1 回滚锚点 |
 
-> 勿移动已有 `phase-2.1-pony-ui-polish`；验收补丁在其后单独提交并打 `accepted` tag。
+> `525cc93` 为 Phase 2.1 文档交接，**不改变** `phase-2.1-pony-ui-accepted` 含义。
 
 ### 当前阶段（2026-05-27）
 
 ```text
 ✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
-✅ Phase 2.1 Pony 前端闭环（契约 → 播放器 API → UI polish → 本地验收）
-⏳ Phase 2.2 FastAPI/SSE mock backend（下一入口，backend/ 尚未创建）
+✅ Phase 2.1 Pony 前端闭环 + 文档锚点（Batch D @ 525cc93）
+✅ Phase 2.2 Batch A — FastAPI/SSE 架构决策文档（backend/ 仍未创建）
+⏳ Phase 2.2 Batch B+ — backend 代码 + 前端 SSE hook
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
 ```
@@ -44,7 +45,8 @@
 | 目标 | 命令 | 端口 |
 |------|------|------|
 | 旧 Streamlit UI | `streamlit run app.py` | 8501 |
-| 新 Pony UI Mock | `cd frontend && npm run dev` | 3000 |
+| Pony UI | `cd frontend && npm run dev` | 3000 |
+| Mock SSE API（Batch B+） | `cd backend && uvicorn app.main:app --reload` | **8000** |
 | CLI 报告/PRD | `python main.py` | — |
 
 ### 修改边界（评审/开发必守）
@@ -54,13 +56,15 @@
 3. 长期记忆：**仅按钮写入** `memory/*.md`，讨论中不自动写
 4. 未来后端 SSE 必须兼容 `docs/meeting-event-spec.md` 的 `MeetingEvent`
 
-### 下一步 P0（Phase 2.2 入口）
+### 下一步 P0（Phase 2.2 — 架构已决，见 `docs/architecture.md`）
 
-| 优先级 | 内容 |
-|--------|------|
-| **P0** | **Phase 2.2** — FastAPI/SSE mock backend（静态事件流）；**不动** `app.py` / `roundtable/` |
-| **P0-文档** | 新建 `backend/` 或 `api/` 前，先在 `docs/` 确认目录策略 |
-| **P0-前端** | 新增 SSE 播放 hook（如 `useMeetingPlayerFromSSE`），**不替换** 现有 `useMeetingPlayer`；保留 `mockEvents` 作 fallback/demo |
+| 项 | 决策 |
+|----|------|
+| 目录 | **`backend/`** FastAPI；不用顶层 `api/`；不改 `app.py` / `roundtable/` |
+| Endpoint | `GET /api/meetings/mock-stream?scenario=&pace=` |
+| SSE | `data:` = MeetingEvent JSON；无自定义 SSE `event:` 类型 |
+| 前端拉流 | **`useMeetingEventStream`** + 保留 **`useMeetingPlayer`** |
+| 播放 MVP | 缓冲后播放；`NEXT_PUBLIC_MEETING_SOURCE=mock\|sse`（默认 mock） |
 
 ### 下一步 P1（Phase 2.3+）
 
@@ -167,8 +171,8 @@ pm-insight-agent/                          # monorepo 根
 │
 ├── output/                                  # CLI 生成的报告输出目录
 │
-└── backend/                                 # （未创建）未来 FastAPI + SSE
-                                             # 应复用 roundtable/，emit MeetingEvent
+└── backend/                                 # Phase 2.2 Batch B+ 创建；mock SSE only
+                                             # Phase 2.2 不 import roundtable/
 ```
 
 ---
@@ -293,13 +297,26 @@ flowchart TB
 - `SpeechBubble`：emotion / action / `targetId` 关系行；顶部角色气泡向下展开
 - speaking / targeted 高亮保留（`PonyAgent` ring + 虚线）
 
-### 五、Phase 2.2 建议入口
+### 五、Phase 2.2 架构要点（Batch A 已写入文档）
 
-1. FastAPI/SSE mock backend，emit 与 `meeting-event-spec.md` 一致的 `MeetingEvent`
-2. **不动** `app.py`、`roundtable/` Streamlit 路径
-3. 新建 `backend/` 或 `api/` 前在 `docs/` 定目录策略
-4. 前端新增 `useMeetingPlayerFromSSE`（或类似），与现有 mock hook 并存
-5. 保留 `mockEvents` 为 fallback / demo 模式
+详见 `docs/architecture.md`、`docs/decisions.md` §12、`docs/meeting-event-spec.md` SSE 节。
+
+- **`backend/`** 独立服务；`backend/pyproject.toml`；不碰根 `requirements.txt`
+- Mock 流：`meeting_started` → … → `summary` → `meeting_done` → close
+- **`summary` ≠ `meeting_done`**
+- 数据：`backend/app/data/scenarios.py` 手工对齐 TS（漂移风险已记录）
+
+### 六、Phase 2.2 实施批次
+
+| Batch | 目标 | 范围 |
+|-------|------|------|
+| **A** | 架构决策文档 | `docs/`、`README_STRUCTURE.md` |
+| **B** | FastAPI 骨架 + `/health` + `backend/README` | `backend/` |
+| **C** | mock-stream + scenarios + tests | `backend/` |
+| **D** | SSE 调试 / 双端口联调文档 | `docs/` |
+| **E** | `useMeetingEventStream`（buffer） | `frontend/hooks/` |
+| **F1** | `NEXT_PUBLIC_MEETING_SOURCE` + E2E | `frontend/` |
+| **2.2.1 / F2** | dev-only source/scenario UI | `frontend/` |
 
 ---
 
@@ -309,8 +326,8 @@ flowchart TB
 2. **`reaction`**：协议含此 type，**mock/UI 均未实现**（主 mock 无 reaction 事件）
 3. **用户输入**：`question` 仅作启动入口，**不驱动** `mockEvents` 内容（固定脚本）
 4. **control events**：`meeting_started` / `meeting_done` / `error` 已在 hook 中 `switch(type)` 处理
-5. `frontend/` mock 播放逻辑在 `useMeetingPlayer.ts`；SSE 应新增独立 hook，不替换 mock
-6. **不改** `app.py` / `roundtable/`；**不创建** `backend/` 直至 Phase 2.2 启动
+5. Mock 播放：`useMeetingPlayer.ts`；SSE 拉流：`useMeetingEventStream`（Batch E）
+6. **Phase 2.2** 可创建 `backend/`（Batch B+）；**不改** `app.py` / `roundtable/`
 7. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
 8. **Framer Motion**：多 keyframe 动画必须用 `tween`，勿对 3+ keyframe 使用 spring/inertia
 
@@ -327,4 +344,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 Batch D · Phase 2.1 收口 · `experiment/pony-roundtable-ui` @ **`3360287`**（tag `phase-2.1-pony-ui-accepted`）· main @ `5d2bb24`*
+*交接包版本：2026-05-27 Phase 2.2 Batch A · 文档 HEAD `525cc93` · 功能验收 tag `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*

@@ -1,10 +1,10 @@
 # 架构说明
 
-> 最后更新：2026-05-27 · main `5d2bb24` · experiment `27bdeff`
+> 最后更新：2026-05-27 · main `5d2bb24` · experiment 功能验收 `3360287`（tag `phase-2.1-pony-ui-accepted`）· 文档 HEAD `525cc93` · **Phase 2.2 Batch A（架构文档，backend/ 未创建）**
 
 ## 项目定位（一句话）
 
-**面向产品经理的 AI 专家圆桌**：Streamlit 原型已封版；正在 monorepo 内建设 **Next.js 小马风格 UI Mock**，未来以 **FastAPI/SSE + MeetingEvent 协议** 对接既有 `roundtable/` Python 逻辑。
+**面向产品经理的 AI 专家圆桌**：Streamlit 原型已封版；monorepo 内 **Next.js Pony UI（Phase 2.1 已验收）** 正接入 **独立 FastAPI mock SSE backend（Phase 2.2）**；远期由 `roundtable/` 经适配器产出真实 `MeetingEvent` 流（Phase 2.3+）。
 
 ## 技术栈
 
@@ -12,14 +12,159 @@
 |------|------|
 | 旧 UI | Streamlit 1.40（`app.py`，legacy bugfix only） |
 | 新 UI | Next.js 16 + TypeScript + Tailwind + Framer Motion（`frontend/`） |
-| 事件协议 | `MeetingEvent`（`docs/meeting-event-spec.md`） |
-| LLM | LangChain + OpenAI 兼容 API（DeepSeek 默认，`core/llm.py`） |
-| 业务逻辑 | 自研 `roundtable/`（未来 `backend/` 复用） |
+| Mock SSE API | FastAPI + uvicorn（**`backend/`**，Batch B+ 创建） |
+| 事件契约（代码） | `frontend/lib/types.ts` |
+| 事件契约（文档） | `docs/meeting-event-spec.md` |
+| LLM | LangChain + OpenAI 兼容 API（`core/llm.py`，**不用于 Phase 2.2 mock**） |
+| 业务逻辑 | `roundtable/`（Phase 2.2 **不 import**；2.3+ 适配） |
 | 会话持久化 | JSON `memory/sessions/` |
 | 长期记忆 | Markdown `memory/*.md`（非向量库） |
-| CLI | `main.py`（报告/PRD，与 Streamlit 并行） |
+| CLI | `main.py`（与 Streamlit 并行） |
 
-**未接入**：ChromaDB、FastAPI backend、SSE 实时流。
+**未接入**：ChromaDB、真实 LLM orchestration over SSE、DB、鉴权、多用户会议状态。
+
+## Phase 2.2 — Pony mock SSE 架构（Batch A 决策）
+
+### 目录与隔离边界
+
+| 决策 | 说明 |
+|------|------|
+| 服务目录 | 新建 **`backend/`**，独立 FastAPI 进程 |
+| 不使用 | 顶层 `api/`、`app.py` 内 API、`roundtable/` 内 SSE、Next API Route 作为主 SSE 后端 |
+| 与 legacy 隔离 | `backend/` **不** import `app.py` / `roundtable/`（Phase 2.2） |
+| 不改 legacy | Phase 2.2 **不修改** `app.py`、`roundtable/` |
+| 依赖 | **`backend/pyproject.toml`**（fastapi, uvicorn[standard], pydantic v2）；**不修改** 根 `requirements.txt` |
+
+计划目录树见 `README_STRUCTURE.md`（Batch B/C 实施时创建，Batch A 仅文档）。
+
+### 服务职责划分
+
+**`backend/` 负责**
+
+- FastAPI app、`GET /health`
+- `GET /api/meetings/mock-stream`（SSE）
+- `scenario` mock 数据（`backend/app/data/scenarios.py`）
+- Pydantic 输出校验、开发环境 CORS
+
+**`backend/` 不负责**
+
+- 前端 `start` / `pause` / `resume` / `replay` / `reset`
+- 真实 LLM、DB、多用户状态、鉴权、复杂断线重连
+
+**`frontend/` 负责**
+
+- 保留 `mockEvents` fallback/demo
+- `useMeetingPlayer`：播放语义（不变）
+- `useMeetingEventStream`（Batch E）：EventSource、JSON parse、buffer `MeetingEvent[]`、连接态
+- Phase 2.2 MVP：**缓冲后播放**（收齐流 → 交给 `useMeetingPlayer`）
+
+### 协议层 / 业务层 / UI 层
+
+```mermaid
+flowchart TB
+    subgraph Transport["协议层 / SSE 传输"]
+        ES[EventSource 连接]
+        MS[meeting_started]
+        MD[meeting_done]
+        CL[连接 close / HTTP 错误]
+    end
+
+    subgraph Business["业务层 MeetingEvent.type"]
+        SP[speech]
+        RX[reaction]
+        SM[summary]
+        ER[error]
+        META[emotion / action / targetId]
+    end
+
+    subgraph UI["UI 层"]
+        UES[useMeetingEventStream buffer]
+        UMP[useMeetingPlayer 定时播放]
+        SB[SpeechBubble / PonyAgent]
+        SC[SummaryCard]
+        CTL[start pause resume replay reset]
+    end
+
+    ES --> MS
+    MS --> SP
+    SP --> SM
+    SM --> MD
+    MD --> CL
+    SP --> META
+    ER -.-> ES
+    UES --> UMP
+    UMP --> SB
+    UMP --> SC
+    CTL --> UMP
+```
+
+| 层 | 关注点 | 典型 `type` |
+|----|--------|-------------|
+| **协议 / 传输** | SSE 生命周期、流开始/结束 | `meeting_started`, `meeting_done`, 连接 close |
+| **业务** | 可展示内容、决策结果 | `speech`, `reaction`, `summary`, `error` |
+| **UI 播放** | 何时显示气泡/小结、用户控制 | `useMeetingPlayer` + 组件 |
+
+**必须区分**
+
+- `summary`：业务层「本轮决策」载荷（`SummaryCard`）。
+- `meeting_done`：协议层「事件流结束」信号。
+- **`summary` ≠ `meeting_done`。**
+
+推荐 mock 顺序：`meeting_started` → `speech`/`reaction`… → `summary` → `meeting_done` → close。
+
+### Mock 数据策略
+
+- Phase 2.2：Python 字典于 `backend/app/data/scenarios.py`（**非** JSON 单一源、**非** TS 自动生成）。
+- 文案手工对齐 `frontend/lib/mockEvents.ts`、`mockScenarios.ts`；存在 **TS/Python 漂移风险**（文档与 review 约束）。
+- `weak` scenario 后续可含边界 case，用于 UI 压力测试。
+- `mock_stream.py` 须含醒目注释：**THIS IS A MOCK** — 真实 orchestration 归入 Phase 2.3+ 独立 service 模块。
+
+### 本地开发与 CORS
+
+| 服务 | 端口 |
+|------|------|
+| `frontend` (`npm run dev`) | 3000 |
+| `backend` (uvicorn) | 8000 |
+
+- CORS allow：`http://localhost:3000`、`http://127.0.0.1:3000` only（**不用** `*`）。
+- Phase 2.2 无鉴权；`EventSource` 无法带自定义 header（已知限制）。
+- Windows 验收：`curl.exe -N`（见 Batch D 文档）。
+
+### Pony 双数据源数据流（Phase 2.2 目标）
+
+```mermaid
+sequenceDiagram
+    participant UI as RoundTableScene
+    participant Stream as useMeetingEventStream
+    participant Player as useMeetingPlayer
+    participant API as backend SSE
+
+    alt mock (default)
+        UI->>Player: mockEvents[]
+        Player->>UI: bubbles / summary
+    else sse (NEXT_PUBLIC_MEETING_SOURCE=sse)
+        UI->>Stream: open mock-stream
+        Stream->>API: GET /api/meetings/mock-stream
+        API-->>Stream: data frames (MeetingEvent JSON)
+        Stream->>Stream: buffer until meeting_done
+        Stream->>Player: MeetingEvent[]
+        Player->>UI: start / pause / ...
+    end
+```
+
+### Phase 2.2 实施批次（摘要）
+
+| Batch | 内容 |
+|-------|------|
+| A | 架构决策文档（本批） |
+| B | FastAPI 骨架 + `/health` + `backend/README` |
+| C | mock-stream + scenarios + tests |
+| D | SSE 调试 / 双端口联调文档 |
+| E | `useMeetingEventStream`（buffer 模式） |
+| F1 | `NEXT_PUBLIC_MEETING_SOURCE` + E2E |
+| 2.2.1 / F2 | dev-only source/scenario UI 切换 |
+
+详见 `docs/handoff.md`、`docs/progress.md`。
 
 ## 完整结构树
 

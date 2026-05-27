@@ -1,6 +1,6 @@
 # 进度追踪
 
-> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` @ **`3360287`**（tag **`phase-2.1-pony-ui-accepted`**）· main @ **`5d2bb24`**（tag `phase-1.5-summary-done`）
+> 最后更新：2026-05-27 · 分支 `experiment/pony-roundtable-ui` · 文档 HEAD **`525cc93`** · 功能验收 **`3360287`**（tag `phase-2.1-pony-ui-accepted`）· main **`5d2bb24`**
 
 ## 已完成
 
@@ -19,65 +19,76 @@
 - [x] `frontend/` Next.js 16 + TS + Tailwind + Framer Motion
 - [x] `useMeetingPlayer` 播放状态机 + `mockEvents` Demo
 - [x] RoundTableScene / PonyAgent / SpeechBubble / SummaryCard
-- [x] `docs/handoff.md` 结构树与模块说明
 
 ### Phase 2.1 — 契约 + 播放器 + UI + 本地验收（**已收口**）
 
 | Batch | Commit | 内容 |
 |-------|--------|------|
-| A | `100ab73` | 扩展 `meeting-event-spec.md`；同步 `decisions.md` / `progress.md` / `handoff.md` |
-| B | `9c7f236` | `types.ts`、`meeting-player.ts`、`useMeetingPlayer`（pause/resume/replay/isComplete） |
-| C | `95fa3d6` | UI polish：`meetingUi.ts`、`mockScenarios.ts`、emotion/action/target、SummaryCard |
-| 验收 | `3360287` | Motion 多 keyframe → tween；顶部专家气泡 `placement=bottom` |
+| A | `100ab73` | 扩展 `meeting-event-spec.md`；同步 docs |
+| B | `9c7f236` | `types.ts`、`meeting-player.ts`、`useMeetingPlayer` |
+| C | `95fa3d6` | UI polish、`meetingUi.ts`、`mockScenarios.ts` |
+| 验收 | `3360287` | Motion tween；顶部气泡 `placement=bottom` |
+| D | `525cc93` | Phase 2.1 交接文档锚点 |
 
-**Tags**
+**Tags**：`phase-2.1-pony-ui-polish` → `95fa3d6` · `phase-2.1-pony-ui-accepted` → `3360287`
 
-| Tag | Commit | 说明 |
-|-----|--------|------|
-| `phase-2.1-pony-ui-polish` | `95fa3d6` | UI polish 完成点（勿移动） |
-| `phase-2.1-pony-ui-accepted` | `3360287` | 本地验收通过，**推荐回滚锚点** |
+### Phase 2.2 Batch A — 架构决策文档（**本批，仅 docs**）
 
-**验收**
-
-- [x] `npm run build` 通过
-- [x] `npm run dev` 浏览器验收通过
+- [x] `backend/` 目录策略（独立 FastAPI；非 `api/`、非 Next Route）
+- [x] SSE endpoint / `pace` / wire format / 分层模型
+- [x] `useMeetingEventStream` + 缓冲后播放 MVP
+- [x] Phase 2.2 不做清单与风险表
+- [x] 修复 `README_STRUCTURE.md`、`architecture.md` 漂移
 
 ## 进行中
 
-- [ ] **Phase 2.2** — FastAPI/SSE mock backend（`backend/` 尚未创建）
+- [ ] **Phase 2.2 Batch B** — FastAPI 骨架 + `/health`
+- [ ] **Phase 2.2 Batch C** — mock-stream + scenarios + tests
+- [ ] **Phase 2.2 Batch D–F1** — 联调文档、SSE hook、env 数据源切换
 
-## 已知 gap（文档已记录）
+## 已知 gap
 
 | 项 | 状态 |
 |----|------|
-| `reaction` 在协议中，mock/UI 未实现 | 主 mock 无 reaction 事件 |
-| `mockScenarios`（concise/verbose/weak） | 数据已有，UI 无切换入口 |
-| 用户输入不驱动 `mockEvents` | 仅启动播放固定脚本 |
-| `backend/` | **尚未创建**（Phase 2.2 再建） |
+| `backend/` 目录 | Batch B 创建 |
+| `reaction` mock/UI | 协议有；主 mock 无 |
+| `mockScenarios` UI 切换 | Phase 2.2.1 / F2 |
+| TS/Python mock 文案 | 手工对齐；漂移风险 |
+| 用户 `question` 不驱动剧本 | 至 Phase 2.3 |
 
 ## Phase 2 Roadmap
 
-- [x] **Phase 2.1** — Contract + player API + UI polish + 本地验收
-- [ ] **Phase 2.2** — FastAPI/SSE mock backend（仍不接真实 roundtable）
-- [ ] **Phase 2.3** — Real roundtable events（Python → `MeetingEvent` 适配器）
-- [ ] **Phase 2.3.1** — Expert text polish（`polish_discussion_text`、词表）
-- [ ] **Phase 2.4** — Streamlit freeze/downline decision（移除或 `legacy/`）
+- [x] **Phase 2.1** — Frontend mock + contract + acceptance
+- [ ] **Phase 2.2** — FastAPI/SSE mock backend + frontend stream hook
+- [ ] **Phase 2.3** — `roundtable/` → `MeetingEvent` 适配器
+- [ ] **Phase 2.3.1** — Expert text polish
+- [ ] **Phase 2.4** — Streamlit downline decision
 
-### Phase 2.2 建议入口（来自 Phase 2.1 收口）
+### Phase 2.2 批次计划（实施顺序）
 
-1. FastAPI/SSE 按 `meeting-event-spec.md` 推送静态或预录事件流
-2. **不动** `app.py`、`roundtable/`
-3. 新建 `backend/` 或 `api/` 前先在 `docs/` 确认目录策略
-4. 前端新增 `useMeetingPlayerFromSSE`（或类似），与 `useMeetingPlayer` 并存
-5. 保留 `mockEvents` 为 fallback / demo
+| Batch | 交付 |
+|-------|------|
+| A | 架构决策文档 ✅ |
+| B | `backend/` 骨架、`GET /health`、`backend/README` |
+| C | `GET /api/meetings/mock-stream`、scenarios、pytest |
+| D | curl/双端口/PowerShell 联调文档 |
+| E | `useMeetingEventStream`（buffer 至 `meeting_done`） |
+| F1 | `NEXT_PUBLIC_MEETING_SOURCE`、E2E 验证 |
+| 2.2.1 / F2 | dev-only Mock/SSE + scenario 控件 |
 
 ## 验证清单
 
 ```bash
-# 旧 UI（main）
+# Streamlit（main）
 streamlit run app.py
 
-# 新 UI（experiment 分支，Phase 2.1 验收点）
+# Pony UI（默认 mock）
 cd frontend && npm run dev
-# 可选：git checkout phase-2.1-pony-ui-accepted
+
+# Phase 2.1 功能回滚点
+git checkout phase-2.1-pony-ui-accepted
+
+# Phase 2.2 Batch C+ SSE（示例，Batch D 细化）
+curl.exe http://127.0.0.1:8000/health
+curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pace=1.0"
 ```

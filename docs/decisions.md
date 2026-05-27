@@ -1,6 +1,6 @@
 # 设计决策与已知问题
 
-> 最后更新：2026-05-27 · experiment `3360287`（tag `phase-2.1-pony-ui-accepted`）· main `5d2bb24`（tag `phase-1.5-summary-done`）
+> 最后更新：2026-05-27 · experiment 文档 HEAD `525cc93` · 功能验收 `3360287`（tag `phase-2.1-pony-ui-accepted`）· main `5d2bb24`（tag `phase-1.5-summary-done`）
 
 ## 关键设计决策
 
@@ -107,6 +107,67 @@
 
 ---
 
+### 12. Phase 2.2 — FastAPI mock SSE backend（Batch A 架构决策）
+
+**目录**：新建 **`backend/`** 独立 FastAPI 服务；**不用** 顶层 `api/`；**不在** `app.py` / `roundtable/` / Next API Route 实现 Phase 2.2 主 SSE。
+
+**依赖**：`backend/pyproject.toml`（fastapi, uvicorn[standard], pydantic v2；dev: pytest, httpx, pytest-asyncio）；**不修改** 根 `requirements.txt`。
+
+**Endpoint**：`GET /api/meetings/mock-stream?scenario=default|concise|verbose|weak&pace=1.0`
+
+- `pace` ∈ [0.25, 4.0]；`effective_delay_ms ≈ delay_before_ms / pace`
+- 未知 `scenario` → 400；`pace` 越界 → 422
+- SSE：仅默认 message；`data:` = 单行 compact JSON；**禁止** SSE `event:` 与 JSON `type` 双轨
+
+**流顺序（mock）**：`meeting_started`（含唯一 `protocolVersion`）→ `speech`/`reaction`… → `summary` → `meeting_done` → close
+
+**契约**：`frontend/lib/types.ts` 为代码事实源；`meeting-event-spec.md` 人工同步；backend 局部 Pydantic，`extra='forbid'`；无顶层 `timestamp` / `metadata`；Phase 2.2 不做 codegen。
+
+**Mock 数据**：`backend/app/data/scenarios.py` 手工对齐 TS mock；接受漂移风险。
+
+**前端**：新增 **`useMeetingEventStream`**（拉流 + buffer + status）；**保留** `useMeetingPlayer`；MVP = 缓冲后播放；数据源 `NEXT_PUBLIC_MEETING_SOURCE=mock|sse`（默认 mock）；dev UI 切换 → Phase 2.2.1。
+
+**SSE 场景播放控制**
+
+| 控制 | 语义 |
+|------|------|
+| `pause` | 仅暂停 player 定时器；SSE 可继续 buffer |
+| `resume` | 继续 player |
+| `replay` | 重放已 buffer 的 events；不强制重连 SSE |
+| `reset` | 关闭 EventSource、清空 buffer、回输入态 |
+
+**CORS**：仅 `localhost:3000` / `127.0.0.1:3000`；端口 backend `8000`、frontend `3000`。
+
+#### Phase 2.2 坚决不做
+
+- 真实 LLM、数据库、多用户/多会议状态、鉴权
+- 复杂断线重连、边收边播（→ 2.2.1 / 3）
+- OpenAPI/JSON Schema 自动生成 TS/Python
+- Phase 2.2 MVP 的 dev UI 数据源/scenario 切换控件
+- 修改 `app.py`、`roundtable/`、根 `requirements.txt`
+- 新增顶层 `timestamp`、`metadata`
+- 移动 `phase-2.1-pony-ui-accepted` / `phase-2.1-pony-ui-polish` 含义
+
+#### Phase 2.2 风险与规避
+
+| 风险 | 规避 |
+|------|------|
+| CORS | 白名单 origin；或后续 Next rewrite（评审可选） |
+| SSE buffering（代理/Nginx） | `X-Accel-Buffering: no`；开发直连 uvicorn |
+| StreamingResponse 异常被吞 | 单测 + curl `-N`；日志包装 generator |
+| Python 依赖污染 | 独立 `backend/pyproject.toml` |
+| PowerShell `curl` 别名 | 文档写 `curl.exe` |
+| 双端口忘启 backend | health 预检 + handoff 启动表 |
+| EventSource 无自定义 header | 2.2 无鉴权；勿依赖 Authorization header |
+| 断线重连 | 明确 deferred；`reset` + 手动重开 |
+| player vs stream 语义冲突 | `summary` 结束播放；`meeting_done` 关流；文档区分 |
+| TS/Python mock 文案漂移 | review checklist；弱场景边界 case |
+| 浏览器同源 SSE 连接数 | 单流 MVP；勿多 Tab 压测 |
+| mock 过干净漏测 UI | `weak` scenario 含边界 case |
+| mock 被当作真实 orchestration | `mock_stream.py` 顶部 MOCK 警告注释 |
+
+---
+
 ## 已知问题与解决方案
 
 | 问题 | 状态 | 处理 |
@@ -128,7 +189,7 @@
 
 **Streamlit 线**（仅 bugfix）：`app.py` 小结渲染优先查 `_render_message_list`、`_turn_to_message`、`_dedupe_summary_messages`。
 
-**Pony 线**（experiment 分支）：Phase 2.1 已收口 @ `3360287`；下一入口 Phase 2.2（SSE）。主改 `frontend/`、`docs/`；**不重构** `roundtable/`；**不创建** `backend/` 直至 Phase 2.2 启动。SSE hook 应**新增**（如 `useMeetingPlayerFromSSE`），不替换 mock `useMeetingPlayer`。
+**Pony 线**（experiment 分支）：Phase 2.1 功能验收 @ `3360287`；Phase 2.2 Batch A 文档已定义 `backend/`。Batch B+ 可创建 `backend/`。主改 `frontend/`、`docs/`、`backend/`；**不修改** `roundtable/` / `app.py`（Phase 2.2）。SSE 拉流 hook：**`useMeetingEventStream`**；播放：**`useMeetingPlayer`**（不替换）。
 
 用户常要求 **只改 `app.py`** 时，不要动 `discussion.py` 收场、`synthesis.py` upsert、ChromaDB/OCR 核心。
 
