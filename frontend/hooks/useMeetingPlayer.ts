@@ -1,20 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MeetingEvent, MeetingSummary } from "@/lib/types";
+import type { MeetingPlayer } from "@/lib/meeting-player";
+import type { MeetingEvent } from "@/lib/types";
 
-const DEFAULT_DELAY = 300;
-const DEFAULT_DURATION = 2500;
+const DEFAULT_DELAY_MS = 300;
+const DEFAULT_SPEECH_DURATION_MS = 2500;
+const DEFAULT_REACTION_DURATION_MS = 800;
 
-export function useMeetingPlayer(events: MeetingEvent[]) {
+function controlDurationMs(event: MeetingEvent): number {
+  return event.duration_ms ?? 0;
+}
+
+export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
   const [currentEventId, setCurrentEventId] = useState<string | null>(null);
-  const [summary, setSummary] = useState<MeetingSummary | null>(null);
+  const [summary, setSummary] = useState<MeetingPlayer["summary"]>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
   const indexRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventsRef = useRef(events);
+  const playFromIndexRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     eventsRef.current = events;
@@ -27,49 +35,132 @@ export function useMeetingPlayer(events: MeetingEvent[]) {
     }
   }, []);
 
-  const schedule = useCallback((fn: () => void, ms: number) => {
+  const schedule = useCallback(
+    (fn: () => void, ms: number) => {
+      clearTimer();
+      timerRef.current = setTimeout(fn, ms);
+    },
+    [clearTimer],
+  );
+
+  const finishPlayback = useCallback(() => {
     clearTimer();
-    timerRef.current = setTimeout(fn, ms);
+    setIsPlaying(false);
+    setIsComplete(true);
+    setCurrentEventId(null);
   }, [clearTimer]);
 
   const playFromIndex = useCallback(() => {
     const list = eventsRef.current;
     if (indexRef.current >= list.length) {
-      setIsPlaying(false);
+      finishPlayback();
       return;
     }
 
     const event = list[indexRef.current];
-    const delay = event.delay_before_ms ?? DEFAULT_DELAY;
+    const delay = event.delay_before_ms ?? DEFAULT_DELAY_MS;
 
     schedule(() => {
-      setCurrentEventId(event.id);
+      switch (event.type) {
+        case "summary": {
+          if (event.summary) {
+            setSummary(event.summary);
+          }
+          setCurrentEventId(null);
+          indexRef.current += 1;
+          setIsPlaying(false);
+          setIsComplete(true);
+          clearTimer();
+          return;
+        }
 
-      if (event.type === "summary" && event.summary) {
-        setSummary(event.summary);
-        indexRef.current += 1;
-        setIsPlaying(false);
-        return;
+        case "meeting_done": {
+          setCurrentEventId(null);
+          indexRef.current += 1;
+          setIsPlaying(false);
+          setIsComplete(true);
+          clearTimer();
+          return;
+        }
+
+        case "error": {
+          setCurrentEventId(event.id);
+          setIsPlaying(false);
+          setIsComplete(false);
+          clearTimer();
+          return;
+        }
+
+        case "meeting_started": {
+          setCurrentEventId(null);
+          indexRef.current += 1;
+          schedule(() => playFromIndexRef.current(), controlDurationMs(event));
+          return;
+        }
+
+        case "speech": {
+          setCurrentEventId(event.id);
+          indexRef.current += 1;
+          schedule(
+            () => playFromIndexRef.current(),
+            event.duration_ms ?? DEFAULT_SPEECH_DURATION_MS,
+          );
+          return;
+        }
+
+        case "reaction": {
+          setCurrentEventId(event.id);
+          indexRef.current += 1;
+          schedule(
+            () => playFromIndexRef.current(),
+            event.duration_ms ?? DEFAULT_REACTION_DURATION_MS,
+          );
+          return;
+        }
+
+        default: {
+          indexRef.current += 1;
+          schedule(() => playFromIndexRef.current(), 0);
+        }
       }
-
-      const duration = event.duration_ms ?? DEFAULT_DURATION;
-      indexRef.current += 1;
-
-      schedule(() => {
-        playFromIndex();
-      }, duration);
     }, delay);
-  }, [schedule]);
+  }, [clearTimer, finishPlayback, schedule]);
+
+  playFromIndexRef.current = playFromIndex;
+
+  const beginPlayback = useCallback(
+    (options: { resetIndex: boolean }) => {
+      clearTimer();
+      if (options.resetIndex) {
+        indexRef.current = 0;
+        setCurrentEventId(null);
+        setSummary(null);
+      }
+      setIsComplete(false);
+      setHasStarted(true);
+      setIsPlaying(true);
+      playFromIndex();
+    },
+    [clearTimer, playFromIndex],
+  );
 
   const start = useCallback(() => {
-    clearTimer();
-    indexRef.current = 0;
-    setCurrentEventId(null);
-    setSummary(null);
-    setHasStarted(true);
+    beginPlayback({ resetIndex: true });
+  }, [beginPlayback]);
+
+  const replay = useCallback(() => {
+    beginPlayback({ resetIndex: true });
+  }, [beginPlayback]);
+
+  const resume = useCallback(() => {
+    const list = eventsRef.current;
+    if (indexRef.current >= list.length) {
+      return;
+    }
     setIsPlaying(true);
+    setIsComplete(false);
     playFromIndex();
-  }, [clearTimer, playFromIndex]);
+  }, [playFromIndex]);
 
   const pause = useCallback(() => {
     clearTimer();
@@ -83,6 +174,7 @@ export function useMeetingPlayer(events: MeetingEvent[]) {
     setSummary(null);
     setIsPlaying(false);
     setHasStarted(false);
+    setIsComplete(false);
   }, [clearTimer]);
 
   useEffect(() => () => clearTimer(), [clearTimer]);
@@ -98,8 +190,11 @@ export function useMeetingPlayer(events: MeetingEvent[]) {
     summary,
     isPlaying,
     hasStarted,
+    isComplete,
     start,
     pause,
+    resume,
+    replay,
     reset,
   };
 }

@@ -28,8 +28,11 @@ export function RoundTableScene() {
     summary,
     isPlaying,
     hasStarted,
+    isComplete,
     start,
     pause,
+    resume,
+    replay,
     reset,
   } = useMeetingPlayer(mockEvents);
 
@@ -97,14 +100,23 @@ export function RoundTableScene() {
           />
         ) : (
           <div className="flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={isPlaying ? pause : start}
-              disabled={!!summary}
-              className="rounded-xl border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-50 disabled:opacity-50"
-            >
-              {isPlaying ? "暂停" : "继续"}
-            </button>
+            {!isComplete ? (
+              <button
+                type="button"
+                onClick={isPlaying ? pause : resume}
+                className="rounded-xl border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-50"
+              >
+                {isPlaying ? "暂停" : "继续"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={replay}
+                className="rounded-xl border border-violet-200 bg-white px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-50"
+              >
+                重新播放
+              </button>
+            )}
             <button
               type="button"
               onClick={reset}
