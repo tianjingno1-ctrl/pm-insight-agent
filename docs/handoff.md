@@ -13,23 +13,25 @@
 
 **面向产品经理的 AI 专家圆桌**：用户提需求 → 多专家短发言 → 主持人固定三行小结 → 可追问 → 可沉淀长期记忆；正在从 **Streamlit 原型** 演进为 **小马 AI 风格 Next.js 前端 + 未来 FastAPI/SSE 后端** 的 monorepo。
 
-### 当前 Git 锚点
+### 当前 Git 锚点（以仓库 **HEAD** 为准）
 
 | 分支 | 说明 | 锚点 |
 |------|------|------|
-| `main` | Streamlit Phase 1.5 已封版 | commit `5d2bb24`，tag `phase-1.5-summary-done` |
-| `experiment/pony-roundtable-ui` | 小马圆桌前端 Mock（**当前主开发线**） | commit `27bdeff` |
+| `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
+| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **`0713f93`** — `docs: 交接包增加项目结构树与模块关联说明` |
 
-旧 tag（历史）：`phase-1.5-before-summary-render-final`（`d9f80aa` 时代）
+历史 tag：`phase-1.5-before-summary-render-final`（`d9f80aa`）。  
+**文档漂移**：此前 handoff/progress 曾写 `27bdeff`，已在 Batch A（契约文档）中修正。
 
 ### 当前阶段（2026-05-27）
 
 ```text
-✅ Streamlit 圆桌 MVP + 小结去重/识别/force 格式化（main 已封，DEBUG 已关）
-✅ monorepo 边界文档 + MeetingEvent 协议
-✅ Next.js 前端 Mock（mockEvents + useMeetingPlayer）
-⏳ 后端 FastAPI/SSE 未建
-⏳ 前端未接真实 roundtable 逻辑
+✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
+✅ Next.js Pony Mock（mockEvents + useMeetingPlayer）
+✅ Batch A：meeting-event-spec 扩展 + docs 同步
+⏳ Phase 2.1a 代码未开始（types / MeetingPlayer / hook 修复）
+⏳ backend/ 未创建（至 Phase 2.2）
+⏳ reaction 有协议、无 UI；control events 仅文档定义
 ❌ ChromaDB / 向量 RAG 未接入
 ```
 
@@ -48,17 +50,19 @@
 3. 长期记忆：**仅按钮写入** `memory/*.md`，讨论中不自动写
 4. 未来后端 SSE 必须兼容 `docs/meeting-event-spec.md` 的 `MeetingEvent`
 
-### 下一步 P0（前端线）
+### 下一步 P0（已确认评审结论）
 
-1. 打磨 Pony UI 播放体验（情绪、动作、布局）
-2. 设计 `backend/` FastAPI 骨架，SSE 推送 `MeetingEvent`
-3. `useMeetingPlayerFromSSE` 替换 mock 事件源，UI 组件不动
+| 优先级 | 内容 |
+|--------|------|
+| **P0-A** | **Phase 2.1a** — Contract + player API cleanup：`types.ts`、`MeetingPlayer` interface、hook `switch(type)`、**pause / resume / replay** |
+| **P0-B** | **Phase 2.1b** — Pony UI polish：emotion / action / target / SummaryCard「🎯 本轮决策」/ replay / 移动端 / 多 mock |
+| **P0-C** | **Phase 2.2** — FastAPI/SSE mock（静态事件流）；**不创建 backend/ 直至本阶段** |
 
-### 下一步 P1（后端复用）
+### 下一步 P1（Phase 2.3+）
 
-1. 将 `roundtable/discussion.py` 包装为 API（专家发言、收场小结）
-2. `force_summary_markdown` 输出映射为 `MeetingEvent.type=summary`
-3. Phase 1.5.4：专家文本强清洗（`polish_discussion_text`）
+1. `roundtable/discussion.py` → `MeetingEvent[]` 适配器
+2. `force_summary_markdown` → `summary` 事件
+3. Phase 2.3.1：专家文本强清洗
 
 ### 详细文档
 
@@ -240,13 +244,14 @@ flowchart TB
 
 ## 已知注意事项
 
-1. `DEBUG_SUMMARY = False`（main 已封版）
-2. 旧 Streamlit 勿用 `_render_messages` 动态重绘（setIn 错位）
-3. memory 仅按钮写入；session JSON 在 `memory/sessions/`
-4. 专家文本质量 → Phase 1.5.4，与小结格式无关
-5. summary 渲染用 `normalized_content`，禁止 `msg["content"]` 直接 markdown
-6. `frontend/` 播放逻辑**只在** `useMeetingPlayer.ts`，UI 组件禁止散落 `setTimeout`
-7. 运行 Streamlit 前确认 Python 环境：`python -m streamlit --version`（避免 3.8 全局旧版）
+1. **`DEBUG_SUMMARY=False`**（main 已封版；勿在文档中写 True）
+2. **`reaction`**：协议含此 type，**mock/UI 均未实现**（Phase 2.1 标 reserved）
+3. **pause/continue**：`RoundTableScene` 在暂停后点「继续」会调 `start()`，**从第 0 条事件重播** — 待 2.1a 改为 resume/replay
+4. **用户输入**：`question` 仅作启动入口，**不驱动** `mockEvents` 内容（固定脚本）
+5. **control events**：`meeting_started` / `meeting_done` / `error` 已在 spec 定义；hook 须避免时间轴空转（2.1a）
+6. `frontend/` 播放逻辑**只在** `useMeetingPlayer.ts`（及未来 SSE 变体）
+7. **不改** `app.py` / `roundtable/`；**不创建** `backend/` 直至 Phase 2.2
+8. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
 
 ---
 
@@ -261,4 +266,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 · 分支 `experiment/pony-roundtable-ui` @ `27bdeff` · main @ `5d2bb24`*
+*交接包版本：2026-05-27 Batch A · `experiment/pony-roundtable-ui` @ **`0713f93`** · main @ `5d2bb24`*

@@ -14,11 +14,12 @@ This repository is evolving from a Streamlit prototype into a pony-style AI roun
 
 ## Current Phase
 
-Phase: Pony Roundtable Frontend Mock
+Phase: Pony Roundtable — **2.1a / 2.1b** (frontend) + contract docs
 
 Rules:
-1. Do not refactor `app.py`.
-2. Do not refactor `roundtable/`.
-3. Build the first visual prototype inside `frontend/`.
-4. Use mock meeting events first.
-5. Future backend must emit the same `MeetingEvent` structure defined in docs.
+1. Do not refactor `app.py` (Streamlit **freeze**: bugfix only on `main`).
+2. Do not refactor `roundtable/` until Phase 2.3 adapter work.
+3. Build UI inside `frontend/`; playback stays in `useMeetingPlayer` (or SSE variant).
+4. Use mock meeting events first; optional fields in `MeetingEvent` are not required in mock yet.
+5. Event protocol source of truth: `docs/meeting-event-spec.md` (`protocolVersion` defaults to `"1.0"`).
+6. Do not create `backend/` until **Phase 2.2** (FastAPI/SSE mock).
