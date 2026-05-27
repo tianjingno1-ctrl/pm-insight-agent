@@ -211,3 +211,5 @@ curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=llm&topic=A
 ```powershell
 git checkout phase-2.3-demo-llm
 ```
+
+**多角色说明（产品 / 测试 / 前后端 / 汇报）**：见 [`phase-2.3-demo-llm-team-brief.md`](./phase-2.3-demo-llm-team-brief.md)。
