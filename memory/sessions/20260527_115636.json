@@ -1,0 +1,23 @@
+{
+  "session_id": "20260527_115636",
+  "title": "我们要做一个面向中小企业老板的AI财务助手，2周内MVP应该做什么？",
+  "original_input": "我们要做一个面向中小企业老板的AI财务助手，2周内MVP应该做什么？",
+  "current_context": "我们要做一个面向中小企业老板的AI财务助手，2周内MVP应该做什么？",
+  "selected_experts": [
+    "product-manager",
+    "engineering-ai-data-remediation-engineer",
+    "marketing-agentic-search-optimizer"
+  ],
+  "turns": [
+    {
+      "role": "用户",
+      "content": "我们要做一个面向中小企业老板的AI财务助手，2周内MVP应该做什么？",
+      "created_at": "2026-05-27 11:56:36"
+    }
+  ],
+  "decisions": [],
+  "open_questions": [],
+  "todos": [],
+  "created_at": "2026-05-27 11:56:36",
+  "updated_at": "2026-05-27 11:56:44"
+}

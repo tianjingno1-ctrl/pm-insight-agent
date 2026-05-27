@@ -745,47 +745,56 @@ def _render_message_list(messages: list) -> None:
         content = msg.get("content", "") or ""
         name = str(msg.get("name") or msg.get("display_name") or "")
         role = str(msg.get("role") or "")
+        msg_type = msg.get("type") or ""
 
         is_summary = _is_summary_message(msg) or _looks_like_summary_message(
             content, name, role
         )
+
+        # summary 必须最先渲染，且不得落入下方 assistant/expert 的 st.markdown(content)
+        if is_summary:
+            normalized_content = force_summary_markdown(msg.get("content") or "")
+            if DEBUG_SUMMARY:
+                st.caption(
+                    f"DEBUG MSG {i}: type={msg_type} role={role} "
+                    f"name={name} is_summary={is_summary} head={content[:40]!r}"
+                )
+                st.caption("调试：摘要已规范化")
+                st.code(normalized_content, language="markdown")
+            with st.container(border=True):
+                if DEBUG_SUMMARY:
+                    st.caption("调试：即将正式渲染 normalized_content")
+                st.markdown(normalized_content)
+            continue
+
         if DEBUG_SUMMARY:
             st.caption(
-                f"DEBUG MSG {i}: type={msg.get('type')} role={role} "
+                f"DEBUG MSG {i}: type={msg_type} role={role} "
                 f"name={name} is_summary={is_summary} head={content[:40]!r}"
             )
 
-        if is_summary:
-            # 仅用规范化后的变量渲染；勿使用 msg["content"] / 循环外的 content
-            normalized_content = force_summary_markdown(msg.get("content") or "")
-            if DEBUG_SUMMARY:
-                st.caption("调试：摘要已规范化")
-                st.code(
-                    normalized_content,
-                    language="markdown",
-                    key=f"rt_summary_code_{i}",
-                )
-            with st.container(border=True):
-                st.markdown(normalized_content, key=f"rt_summary_md_{i}")
-            continue
-
-        if msg["type"] == "user":
+        if msg_type == "user":
             with st.chat_message("user", avatar=ROLE_DISPLAY["user"][0]):
                 st.markdown(content)
-        elif msg["type"] == "assistant":
+        elif msg_type == "assistant":
             if _looks_like_summary_message(content, name, role):
-                content = force_summary_markdown(content)
+                normalized_content = force_summary_markdown(content)
                 with st.container(border=True):
-                    st.markdown(content)
+                    st.markdown(normalized_content)
                 continue
             avatar = msg.get("avatar") or ROLE_DISPLAY["moderator"][0]
             with st.chat_message("assistant", avatar=avatar):
                 st.markdown(content)
+        elif msg_type == "summary":
+            normalized_content = force_summary_markdown(msg.get("content") or "")
+            with st.container(border=True):
+                st.markdown(normalized_content)
+            continue
         else:
             if _looks_like_summary_message(content, name, role):
-                content = force_summary_markdown(content)
+                normalized_content = force_summary_markdown(content)
                 with st.container(border=True):
-                    st.markdown(content)
+                    st.markdown(normalized_content)
                 continue
             avatar = msg.get("avatar") or ROLE_DISPLAY["unknown"][0]
             label = msg.get("display_name") or ROLE_DISPLAY["unknown"][1]
