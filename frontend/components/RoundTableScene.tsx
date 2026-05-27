@@ -78,8 +78,8 @@ export function RoundTableScene() {
         </p>
       </header>
 
-      <div className="relative mx-auto w-full max-w-3xl overflow-x-hidden">
-        <div className="grid grid-cols-3 grid-rows-3 gap-2 place-items-center sm:gap-4">
+      <div className="relative mx-auto w-full max-w-3xl">
+        <div className="grid grid-cols-3 grid-rows-3 gap-2 place-items-center overflow-visible sm:gap-4">
           <div className="col-start-2 row-start-2 flex h-28 w-28 items-center justify-center rounded-full border-4 border-amber-100 bg-gradient-to-br from-amber-50 to-orange-100 shadow-inner sm:h-36 sm:w-36">
             <span className="text-center text-[10px] font-medium text-amber-800/80 sm:text-xs">
               圆桌
@@ -96,6 +96,9 @@ export function RoundTableScene() {
                   agent={agent}
                   isSpeaking={isSpeaking}
                   isTargeted={isTargeted}
+                  bubblePlacement={
+                    agent.position === "top" ? "bottom" : "top"
+                  }
                   emotion={
                     isSpeaking ? currentEvent?.emotion ?? "neutral" : "neutral"
                   }
