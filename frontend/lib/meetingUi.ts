@@ -16,6 +16,43 @@ const TARGET_VERB: Partial<Record<MeetingAction, string>> = {
   suggest: "回应了",
 };
 
+const TARGET_VERB_SHORT: Partial<Record<MeetingAction, string>> = {
+  challenge: "质疑",
+  reject: "反驳",
+  support: "支持",
+  suggest: "回应",
+};
+
+const SHORT_NAME: Partial<Record<string, string>> = {
+  host: "主持",
+  product: "产品",
+  tech: "技术",
+  growth: "增长",
+};
+
+const MAX_BUBBLE_CHARS = 10;
+
+export function getShortBubbleText(
+  action: MeetingAction | undefined,
+  targetId: string | undefined,
+  agentList: AgentConfig[],
+): string {
+  if (targetId && action) {
+    const verb = TARGET_VERB_SHORT[action];
+    const shortName =
+      SHORT_NAME[targetId] ??
+      agentList.find((a) => a.id === targetId)?.name.replace(/专家$/, "") ??
+      "";
+    if (verb && shortName) {
+      return `${verb}${shortName}`.slice(0, MAX_BUBBLE_CHARS);
+    }
+  }
+  if (action && ACTION_LABELS[action]) {
+    return ACTION_LABELS[action].slice(0, MAX_BUBBLE_CHARS);
+  }
+  return "发言";
+}
+
 export function getTargetRelationLine(
   action: MeetingAction | undefined,
   targetId: string | undefined,

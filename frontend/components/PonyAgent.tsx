@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { AgentConfig, Emotion, MeetingAction } from "@/lib/types";
+import type { AgentConfig, Emotion } from "@/lib/types";
 import { SpeechBubble, type BubblePlacement } from "./SpeechBubble";
 
 const emotionRing: Record<Emotion, string> = {
@@ -19,9 +19,7 @@ type PonyAgentProps = {
   isTargeted?: boolean;
   bubblePlacement?: BubblePlacement;
   emotion?: Emotion;
-  action?: MeetingAction;
-  speechText?: string;
-  targetRelation?: string;
+  bubbleLabel?: string;
 };
 
 export function PonyAgent({
@@ -30,19 +28,15 @@ export function PonyAgent({
   isTargeted = false,
   bubblePlacement = "top",
   emotion = "neutral",
-  action,
-  speechText = "",
-  targetRelation,
+  bubbleLabel = "",
 }: PonyAgentProps) {
-  const showBubble = isSpeaking && !!speechText;
+  const showBubble = isSpeaking && !!bubbleLabel;
   const bubble = (
     <SpeechBubble
-      text={speechText}
+      text={bubbleLabel}
       visible={showBubble}
       placement={bubblePlacement}
       emotion={emotion}
-      action={action}
-      targetRelation={targetRelation}
     />
   );
 

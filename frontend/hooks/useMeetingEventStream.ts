@@ -29,11 +29,15 @@ export type UseMeetingEventStreamOptions = {
   autoStart?: boolean;
 };
 
+export type MeetingStreamStartOptions = {
+  topic?: string;
+};
+
 export type UseMeetingEventStreamResult = {
   events: MeetingEvent[];
   status: MeetingStreamStatus;
   error: string | null;
-  start: () => void;
+  start: (overrides?: MeetingStreamStartOptions) => void;
   stop: () => void;
   reset: () => void;
   isStreaming: boolean;
@@ -114,7 +118,7 @@ export function useMeetingEventStream(
     setStatus("idle");
   }, [closeSource]);
 
-  const start = useCallback(() => {
+  const start = useCallback((overrides?: MeetingStreamStartOptions) => {
     closeSource();
     setEvents([]);
     setError(null);
@@ -122,8 +126,9 @@ export function useMeetingEventStream(
 
     const { url: streamUrl, scenario: sc, pace: p, topic: streamTopic } =
       optionsRef.current;
+    const resolvedTopic = overrides?.topic?.trim() || streamTopic;
     const source = new EventSource(
-      buildStreamUrl(streamUrl, sc, p, streamTopic),
+      buildStreamUrl(streamUrl, sc, p, resolvedTopic),
     );
     sourceRef.current = source;
 

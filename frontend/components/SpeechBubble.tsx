@@ -1,9 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import type { Emotion, MeetingAction } from "@/lib/types";
+import type { Emotion } from "@/lib/types";
 import {
-  ACTION_LABELS,
   EMOTION_BUBBLE_STYLES,
   type EmotionBubbleStyle,
 } from "@/lib/meetingUi";
@@ -15,8 +14,6 @@ type SpeechBubbleProps = {
   visible: boolean;
   placement?: BubblePlacement;
   emotion?: Emotion;
-  action?: MeetingAction;
-  targetRelation?: string;
 };
 
 const PLACEMENT_CLASS: Record<BubblePlacement, string> = {
@@ -76,8 +73,6 @@ export function SpeechBubble({
   visible,
   placement = "top",
   emotion = "neutral",
-  action,
-  targetRelation,
 }: SpeechBubbleProps) {
   const style = EMOTION_BUBBLE_STYLES[emotion];
   const { transition, ...motionProps } = bubbleMotion(style);
@@ -87,33 +82,23 @@ export function SpeechBubble({
     <AnimatePresence>
       {visible && text ? (
         <motion.div
-          key={`${text}-${emotion}-${action ?? ""}-${placement}`}
+          key={`${text}-${emotion}-${placement}`}
           {...motionProps}
           transition={transition}
-          className={`pointer-events-none absolute left-1/2 z-20 w-[min(260px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] -translate-x-1/2 sm:w-[min(280px,72vw)] ${PLACEMENT_CLASS[placement]}`}
+          className={`pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 ${PLACEMENT_CLASS[placement]}`}
         >
           <div
-            className={`relative rounded-2xl border px-3 py-2.5 text-sm leading-relaxed shadow-lg sm:px-4 sm:py-3 ${style.panel}`}
+            className={`relative whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md sm:px-3.5 sm:py-2 sm:text-sm ${style.panel}`}
           >
             {tailPointsUp ? (
               <div
-                className={`absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t ${style.tail}`}
+                className={`absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t ${style.tail}`}
               />
             ) : null}
-            {action ? (
-              <span className="mb-1.5 inline-block rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                {ACTION_LABELS[action]}
-              </span>
-            ) : null}
-            {targetRelation ? (
-              <p className="mb-1 text-xs font-medium text-slate-600">
-                {targetRelation}
-              </p>
-            ) : null}
-            <p className="break-words">{text}</p>
+            <span>{text}</span>
             {!tailPointsUp ? (
               <div
-                className={`absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b border-r ${style.tail}`}
+                className={`absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r ${style.tail}`}
               />
             ) : null}
           </div>
