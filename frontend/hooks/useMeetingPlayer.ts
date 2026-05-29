@@ -18,6 +18,7 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const indexRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,6 +62,9 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
     const delay = event.delay_before_ms ?? DEFAULT_DELAY_MS;
 
     schedule(() => {
+      const playingIndex = indexRef.current;
+      setActiveIndex(playingIndex);
+
       switch (event.type) {
         case "summary": {
           if (event.summary) {
@@ -135,6 +139,7 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
       clearTimer();
       if (options.resetIndex) {
         indexRef.current = 0;
+        setActiveIndex(-1);
         setCurrentEventId(null);
         setSummary(null);
       }
@@ -172,6 +177,7 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
   const reset = useCallback(() => {
     clearTimer();
     indexRef.current = 0;
+    setActiveIndex(-1);
     setCurrentEventId(null);
     setSummary(null);
     setIsPlaying(false);
@@ -189,6 +195,7 @@ export function useMeetingPlayer(events: MeetingEvent[]): MeetingPlayer {
   return {
     currentEvent,
     currentEventId,
+    activeIndex,
     summary,
     isPlaying,
     hasStarted,

@@ -83,7 +83,7 @@ def test_script_to_meeting_events_shape() -> None:
 
     speeches = [e for e in events if e["type"] == "speech"]
     assert len(speeches) >= 6
-    assert any("加入" in (e.get("text") or "") for e in speeches)
+    assert any("就位" in (e.get("text") or "") for e in speeches)
     assert any("议题" in (e.get("text") or "") for e in speeches)
     assert any(topic in (e.get("text") or "") for e in speeches)
 

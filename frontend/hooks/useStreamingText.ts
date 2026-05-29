@@ -11,8 +11,14 @@ export function useStreamingText(
   isPlaying: boolean,
   durationMs?: number,
 ): string {
+  const [prevText, setPrevText] = useState(text);
   const [charIndex, setCharIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  if (text !== prevText) {
+    setPrevText(text);
+    setCharIndex(0);
+  }
 
   useEffect(() => {
     const clearTimer = () => {

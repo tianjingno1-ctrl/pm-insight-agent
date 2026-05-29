@@ -18,7 +18,7 @@
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | 小马圆桌（**当前主开发线**） | **功能 `6cb4ef9`** · Phase 2.2 tag **`phase-2.2-sse-mock-integration`** |
+| `experiment/pony-roundtable-ui` | AI 专家圆桌演示 UI（**当前主开发线**） | **`1ce0e6c`** · Phase 2.2 tag `phase-2.2-sse-mock-integration` 勿动 |
 
 **Phase 2.1 tags（勿移动）**
 
@@ -36,16 +36,20 @@
 
 > `6cb4ef9` = F1 env 接线 · `fa086f8` = SSE hook · `7e5620c` = Batch D 文档 · `741c181` = mock SSE backend。
 
-### 当前阶段（2026-05-27）
+### 当前阶段（2026-05-29）
 
 ```text
 ✅ Streamlit 圆桌 MVP 已封版（main，DEBUG 关）
 ✅ Phase 2.1 Pony 前端（tag phase-2.1-pony-ui-accepted @ 3360287）
 ✅ Phase 2.2 Mock SSE integration（tag phase-2.2-sse-mock-integration）
-   · backend mock-stream @ 741c181
-   · frontend hook @ fa086f8 · env mock|sse @ 6cb4ef9
-   · 默认 mock；SSE 缓冲完成后播放
-✅ Phase 2.3-Demo-LLM — `scenario=llm` + OpenAI-compatible 脚本（演示版，非多 Agent）· **演示交接** → `docs/handoff-phase-2.3-demo-llm.md`
+✅ Phase 2.3-Demo-LLM — scenario=llm + DeepSeek（见 handoff-phase-2.3-demo-llm.md）
+✅ Phase 2.3-Demo-UI — 演示级 polish + 发言记录 + 分享材料（本提交）
+   · 后端自动读根 .env 的 DEEPSEEK_*（backend/app/config.py）
+   · LLM 议题由输入框传入（非 env 写死）
+   · 专家角色统一中文名（主持人/产品/技术/增长），对齐 frontend mockEvents
+   · 左侧 SpeechHistoryPanel 汇总全部发言、流式同步
+   · 圆桌短气泡 ≤10 字；三列决策小结；玻璃拟态演示 UI
+   · 分享文档：docs/ai-learning-share.{md,docx,pptx}
 ⏳ Phase 2.3+ — roundtable 编排 + 边生成边播（未开始）
 ⏳ reaction 有协议、无 UI；主 mock 无 reaction 事件
 ❌ ChromaDB / 向量 RAG 未接入
@@ -89,32 +93,36 @@ curl.exe -N "http://127.0.0.1:8000/api/meetings/mock-stream?scenario=default&pac
 | 1 | `cd backend` → `py -3.12 -m uvicorn app.main:app --reload --port 8000` | `curl.exe http://127.0.0.1:8000/health` |
 | 2 | `cd frontend` → `npm run dev`（默认 mock） | `http://localhost:3000` |
 | 2b | SSE：`$env:NEXT_PUBLIC_MEETING_SOURCE="sse"` 后 `npm run dev` | 需终端 1 backend；缓冲完成后播放 |
-| 2c | **Demo LLM**：见下方 | `scenario=llm` + `NEXT_PUBLIC_MEETING_TOPIC` |
+| 2c | **Demo LLM**：`frontend/.env.local` 设 `NEXT_PUBLIC_MEETING_SOURCE=sse` + `SCENARIO=llm`；议题在页面输入框填写 | 需 backend；见下方 |
 
-详见 `frontend/README.md`（`NEXT_PUBLIC_MEETING_*`）。
+详见 `frontend/README.md`（`NEXT_PUBLIC_MEETING_*`）。**本地 LLM 演示推荐**用 `frontend/.env.local`（勿提交 git）。
 
-#### Demo LLM 启动（明天演示）
+#### Demo LLM 启动（评审会 / 分享演示）
 
-**Backend**
+**Backend**（自动读项目根 `.env` 的 `DEEPSEEK_*`，无需手动 `$env:`）
 
 ```powershell
 cd backend
-$env:OPENAI_API_KEY="你的 key"
-$env:OPENAI_BASE_URL="https://api.openai.com/v1"
-$env:OPENAI_MODEL="gpt-4o-mini"
+py -3.12 -m pip install -e ".[dev]"
 py -3.12 -m uvicorn app.main:app --reload --port 8000
 ```
 
-**Frontend**
+**Frontend**（`frontend/.env.local` 示例，勿提交）
+
+```env
+NEXT_PUBLIC_MEETING_SOURCE=sse
+NEXT_PUBLIC_MEETING_SCENARIO=llm
+NEXT_PUBLIC_MEETING_PACE=4.0
+```
 
 ```powershell
 cd frontend
-$env:NEXT_PUBLIC_MEETING_SOURCE="sse"
-$env:NEXT_PUBLIC_MEETING_SCENARIO="llm"
-$env:NEXT_PUBLIC_MEETING_TOPIC="AI会不会取代产品经理"
-$env:NEXT_PUBLIC_MEETING_PACE="4.0"
 npm run dev
 ```
+
+浏览器：**http://localhost:3000** → 在输入框填议题 →「开始讨论」。
+
+**旧方式（仍可用）**：手动 `$env:OPENAI_API_KEY` + `$env:NEXT_PUBLIC_MEETING_TOPIC=...`（见 `docs/handoff-phase-2.3-demo-llm.md`）。
 
 说明：
 
@@ -185,6 +193,8 @@ Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Obje
 - 进度：`docs/progress.md`
 - 决策/坑：`docs/decisions.md`
 - 事件协议：`docs/meeting-event-spec.md`
+- Demo LLM：`docs/handoff-phase-2.3-demo-llm.md`
+- **AI 学习分享**：`docs/ai-learning-share.md` · `docs/ai-learning-share.docx` · `docs/ai-learning-share.pptx`
 - Monorepo 规则：`README_STRUCTURE.md`
 
 ---
@@ -245,32 +255,47 @@ pm-insight-agent/                          # monorepo 根
 │
 ├── docs/                                    # 产品与协议文档（可自由更新）
 │   ├── handoff.md                           # ★ 本文件：AI 会话交接
+│   ├── handoff-phase-2.3-demo-llm.md        # Demo LLM 专项交接
+│   ├── ai-learning-share.md                 # 需求评审会 AI 学习分享（完整稿）
+│   ├── ai-learning-share.docx               # 分享 Word（py scripts 生成）
+│   ├── ai-learning-share.pptx               # 分享 PPT（py scripts 生成）
+│   ├── ai-learning-share-ppt-outline.md     # PPT 大纲源
 │   ├── architecture.md                      # 架构说明
 │   ├── progress.md                          # 进度追踪
 │   ├── decisions.md                         # 设计决策与已知坑
-│   └── meeting-event-spec.md                # MeetingEvent 协议（前端 mock ↔ 未来 SSE 共用）
+│   └── meeting-event-spec.md                # MeetingEvent 协议（前端 mock ↔ SSE 共用）
+│
+├── scripts/
+│   ├── generate_share_docx.py               # 再生 ai-learning-share.docx
+│   └── generate_share_pptx.py               # 再生 ai-learning-share.pptx
 │
 ├── frontend/                                # ★ 新 UI（Next.js，experiment 分支主开发区）
 │   ├── app/
 │   │   ├── page.tsx                         # 入口 → RoundTableScene
-│   │   ├── layout.tsx                       # 根布局、metadata
-│   │   └── globals.css                      # 浅色渐变背景
+│   │   ├── layout.tsx                       # 根布局、metadata（AI 专家圆桌）
+│   │   └── globals.css                      # 渐变背景 + glass-panel 工具类
 │   ├── components/
-│   │   ├── RoundTableScene.tsx              # 主场景：圆桌布局 + 输入 + 播放控制
-│   │   ├── PonyAgent.tsx                    # 单角色头像、情绪环、speaking 动画
-│   │   ├── SpeechBubble.tsx                 # 气泡：emotion/action/target；top/bottom placement；多 keyframe 用 tween
-│   │   ├── MeetingInput.tsx                 # 用户问题输入
-│   │   └── SummaryCard.tsx                  # 「🎯 本轮决策」三行小结
+│   │   ├── RoundTableScene.tsx              # 主场景：圆桌 + 发言记录 + 输入 + 播放控制 + 议题徽章
+│   │   ├── PonyAgent.tsx                    # 单角色头像、情绪环、speaking 动画、短气泡
+│   │   ├── SpeechBubble.tsx                 # 短标签气泡（≤10 字互动）
+│   │   ├── SpeechHistoryPanel.tsx           # ★ 左侧发言记录（全部专家、流式同步、自动滚动）
+│   │   ├── MeetingInput.tsx                 # 议题输入（驱动 LLM topic）
+│   │   └── SummaryCard.tsx                  # 三列决策小结卡片
 │   ├── hooks/
-│   │   └── useMeetingPlayer.ts              # ★ 事件播放状态机（mock；Phase 2.2 旁路 SSE hook）
+│   │   ├── useMeetingPlayer.ts              # 事件播放状态机（含 activeIndex）
+│   │   ├── useMeetingEventStream.ts         # SSE 缓冲拉流（scenario/topic 可覆盖）
+│   │   ├── useSpeechHistory.ts              # 从播放进度派生发言记录列表
+│   │   └── useStreamingText.ts              # 当前发言打字机效果
 │   ├── lib/
 │   │   ├── types.ts                         # MeetingEvent / AgentId 类型
-│   │   ├── meeting-player.ts                # MeetingPlayer 接口与实现
-│   │   ├── meetingUi.ts                     # emotion 样式、action 标签、target 关系文案
-│   │   ├── mockEvents.ts                    # 默认 mock 一场圆桌（demo 主路径）
-│   │   └── mockScenarios.ts                 # concise / verbose / weak 压力测试场景（未接 UI 切换）
-│   ├── package.json                         # [Next 16, React, Tailwind, framer-motion]
-│   └── (node_modules/, .next/ 不提交 git)
+│   │   ├── meeting-player.ts                # MeetingPlayer 接口
+│   │   ├── meetingUi.ts                     # getShortBubbleText、emotion 样式
+│   │   ├── meetingSource.ts                 # NEXT_PUBLIC_MEETING_* 解析
+│   │   ├── speechHistory.ts                 # SpeechMessage 类型
+│   │   ├── mockEvents.ts                    # 默认 mock（中文四专家）
+│   │   └── mockScenarios.ts                 # concise / verbose / weak
+│   ├── .env.local                           # 本地 SSE+LLM 配置（gitignore，勿提交）
+│   └── package.json
 │
 ├── agents_library/                          # 外部 agent 定义库（markdown persona）
 │   └── agency-agents/                       # 按 design/engineering/marketing… 分类
@@ -338,9 +363,10 @@ flowchart TB
 | 状态 | main 封版，legacy | experiment 分支，主开发 |
 | 事件模型 | Python dict messages | `MeetingEvent` TS 类型 |
 | 小结格式 | `force_summary_markdown` → markdown 三行 | `SummaryCard` direction/disagreement/nextStep |
-| 播放 | 静态列表一次性渲染 | `useMeetingPlayer` 定时播放 |
-| 后端 | 进程内直接调 roundtable | 尚无 backend，纯 mock |
-| 迁移策略 | 保留至 backend 就绪 | UI 不动，只换 hook 事件源 |
+| 播放 | 静态列表一次性渲染 | `useMeetingPlayer` + `useSpeechHistory` 定时播放 |
+| 后端 | 进程内直接调 roundtable | `backend/` FastAPI mock SSE + Demo LLM |
+| 用户议题 | 驱动 roundtable 讨论 | mock 模式固定脚本；**SSE+llm 模式输入框传 topic** |
+| 迁移策略 | 保留至 backend 就绪 | UI 不动，换事件源；下一步接 roundtable 编排 |
 
 ---
 
@@ -356,7 +382,7 @@ flowchart TB
 
 ### frontend/hooks/useMeetingPlayer.ts
 
-暴露：`currentEvent`, `summary`, `isPlaying`, `hasStarted`, `isComplete`, `start()`, `pause()`, `resume()`, `replay()`, `reset()`
+暴露：`currentEvent`, `currentEventId`, `activeIndex`, `summary`, `isPlaying`, `hasStarted`, `isComplete`, `start()`, `pause()`, `resume()`, `replay()`, `reset()`
 
 **播放语义（Phase 2.1 已验收）**
 
@@ -425,6 +451,42 @@ flowchart TB
 | **F1** | ✅ `6cb4ef9` | `NEXT_PUBLIC_MEETING_SOURCE`（默认 mock） |
 | **F2 / Final** | ✅ | 验收归档 + tag `phase-2.2-sse-mock-integration` |
 | **2.2.1+** | ⏳ | dev-only source/scenario UI（后续） |
+| **2.3-Demo-UI** | ✅ | 发言记录、演示 UI、DeepSeek 接线、分享材料 |
+
+---
+
+## Phase 2.3-Demo-UI 完成记录（2026-05-29）
+
+### 一、完成状态
+
+- [x] `backend/app/config.py` 自动读根 `.env` 的 `DEEPSEEK_*` → `OPENAI_*`
+- [x] LLM 议题由 `RoundTableScene` 输入框 → `stream.start({ topic })`（修复答非所问）
+- [x] `backend/app/services/llm_meeting.py` 专家角色改中文（对齐 `mockEvents.ts`）
+- [x] `SpeechHistoryPanel` + `useSpeechHistory`：全部发言汇总、流式同步、自动滚动
+- [x] 圆桌短气泡 `getShortBubbleText`（≤10 字）；`SpeechStreamPanel` 已移除
+- [x] 演示 UI polish（玻璃卡片、状态徽章、议题徽章、三列 SummaryCard）
+- [x] 分享材料：`docs/ai-learning-share.{md,docx,pptx}` + `scripts/generate_share_*`
+
+### 二、关键提交（本阶段，按时间）
+
+| Commit | 说明 |
+|--------|------|
+| `f6dba6e` | DeepSeek 接线 + 短气泡 + 流式面板 + LLM topic 修复 |
+| `1ce0e6c` | 发言记录 + 演示 UI + 中文专家 + 分享材料 + handoff 更新 |
+
+### 三、演示要点
+
+- 四专家名称**固定**（主持人/产品/技术/增长），换议题变的是**发言内容**
+- 顶部显示「议题：xxx」徽章
+- 左侧「发言记录」+ 圆桌短气泡 + 底部三列小结
+- 分享：投屏 localhost:3000 或发 `ai-learning-share.docx` / `.pptx`（**勿发 localhost 链接**）
+
+### 四、再生分享文档
+
+```powershell
+py -3.12 scripts/generate_share_docx.py
+py -3.12 scripts/generate_share_pptx.py
+```
 
 ---
 
@@ -432,12 +494,15 @@ flowchart TB
 
 1. **`DEBUG_SUMMARY=False`**（main 已封版；勿在文档中写 True）
 2. **`reaction`**：协议含此 type，**mock/UI 均未实现**（主 mock 无 reaction 事件）
-3. **用户输入**：`question` 仅作启动入口，**不驱动** `mockEvents` 内容（固定脚本）
-4. **control events**：`meeting_started` / `meeting_done` / `error` 已在 hook 中 `switch(type)` 处理
-5. Mock 播放：`useMeetingPlayer.ts`；SSE 拉流：`useMeetingEventStream`（Batch E）
-6. **Phase 2.2** 可创建 `backend/`（Batch B+）；**不改** `app.py` / `roundtable/`
-7. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
-8. **Framer Motion**：多 keyframe 动画必须用 `tween`，勿对 3+ keyframe 使用 spring/inertia
+3. **用户输入**：mock 模式仍播放固定 `mockEvents`；**SSE+llm 模式**输入框 topic 传给后端 LLM
+4. **四专家名称固定**：UI 槽位不变；LLM 只改发言内容，不会按议题换角色名
+5. **control events**：`meeting_started` / `meeting_done` / `error` 已在 hook 中处理
+6. Mock 播放：`useMeetingPlayer`；SSE：`useMeetingEventStream`；发言记录：`useSpeechHistory`
+7. **Phase 2.2+** `backend/` 已存在；**不改** `app.py` / `roundtable/` 主逻辑
+8. Streamlit 勿用 `_render_messages` 动态重绘；memory 仅按钮写入
+9. **Framer Motion**：多 keyframe 动画必须用 `tween`，勿对 3+ keyframe 使用 spring/inertia
+10. **`frontend/.env.local`**：本地演示配置，已 gitignore；改后需重启 `npm run dev`
+11. **Office 临时文件** `docs/~$*`：Word/PPT 打开时产生，勿提交
 
 ---
 
@@ -452,4 +517,4 @@ flowchart TB
 
 ---
 
-*交接包版本：2026-05-27 Phase 2.2 **Accepted** · 功能 `6cb4ef9` · tags `phase-2.2-mock-sse-backend` + `phase-2.2-sse-mock-integration` · Phase 2.1 `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
+*交接包版本：2026-05-29 Phase 2.3-Demo-UI @ `1ce0e6c` · Phase 2.3-Demo-LLM `f6dba6e` · Phase 2.2 tags `phase-2.2-mock-sse-backend` + `phase-2.2-sse-mock-integration` · Phase 2.1 `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*

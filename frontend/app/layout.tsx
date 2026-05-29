@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "专家圆桌 · Pony UI Mock",
-  description: "小马 AI 风格专家圆桌会议前端原型",
+  title: "AI 专家圆桌 · PM Insight",
+  description: "面向产品经理的 AI 多专家圆桌讨论演示",
 };
 
 export default function RootLayout({

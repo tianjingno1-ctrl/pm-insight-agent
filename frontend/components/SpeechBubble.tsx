@@ -88,7 +88,7 @@ export function SpeechBubble({
           className={`pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 ${PLACEMENT_CLASS[placement]}`}
         >
           <div
-            className={`relative whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold shadow-md sm:px-3.5 sm:py-2 sm:text-sm ${style.panel}`}
+            className={`relative whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold shadow-lg ring-2 ring-white/80 sm:px-4 sm:py-2 sm:text-sm ${style.panel}`}
           >
             {tailPointsUp ? (
               <div

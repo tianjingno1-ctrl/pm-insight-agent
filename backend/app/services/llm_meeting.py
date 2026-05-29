@@ -23,32 +23,39 @@ DEFAULT_TOPIC = "AI 如何改变团队协作"
 LLM_SCENARIO_KEY = "llm"
 
 SPEAKER_TO_AGENT: dict[str, str] = {
-    "twilight": "host",
-    "rainbow": "growth",
-    "rarity": "product",
-    "fluttershy": "tech",
+    # 新版：直接用语义 id
     "host": "host",
     "product": "product",
     "tech": "tech",
     "growth": "growth",
+    # 兼容旧版小马 id
+    "twilight": "host",
+    "rainbow": "growth",
+    "rarity": "product",
+    "fluttershy": "tech",
 }
 
-PONY_ROSTER: list[tuple[str, str, str]] = [
-    ("twilight", "Twilight Sparkle", "host"),
-    ("rainbow", "Rainbow Dash", "growth"),
-    ("rarity", "Rarity", "product"),
-    ("fluttershy", "Fluttershy", "tech"),
+# 与 frontend/lib/mockEvents.ts 角色名一致
+EXPERT_ROSTER: list[tuple[str, str, str]] = [
+    ("host", "主持人", "host"),
+    ("product", "产品专家", "product"),
+    ("tech", "技术专家", "tech"),
+    ("growth", "增长专家", "growth"),
 ]
+
+# 兼容测试/旧引用
+PONY_ROSTER = EXPERT_ROSTER
 
 SPEECH_EMOTIONS = ("thinking", "excited", "worried", "neutral", "happy")
 SPEECH_ACTIONS = ("open", "suggest", "challenge", "support", "summarize")
 
-_SYSTEM_PROMPT = """你是小马AI风格圆桌会议编剧。根据用户议题，编写一场四角色中文圆桌讨论脚本。
-角色与职责：
-- Twilight Sparkle（speakerId: twilight）：战略、结构、证据
-- Rainbow Dash（speakerId: rainbow）：速度、执行、大胆判断
-- Rarity（speakerId: rarity）：用户体验、品质、产品打磨
-- Fluttershy（speakerId: fluttershy）：人群影响、风险、伦理
+_SYSTEM_PROMPT = """你是产品经理圆桌会议编剧。根据用户议题，编写一场四角色中文圆桌讨论脚本。
+
+固定角色（speakerId 必须使用下列值，speakerName 必须使用下列中文名）：
+- host / 主持人：控场、结构、证据、收束
+- product / 产品专家：MVP 边界、用户价值、体验
+- tech / 技术专家：工程可行性、架构取舍、交付风险
+- growth / 增长专家：需求验证、增长假设、市场节奏
 
 只输出一个 JSON 对象，不要 Markdown，不要解释，不要代码块。
 JSON 结构：
@@ -56,7 +63,7 @@ JSON 结构：
   "title": "string",
   "topic": "string",
   "messages": [
-    {"speakerId": "twilight|rainbow|rarity|fluttershy", "speakerName": "string", "text": "string"}
+    {"speakerId": "host|product|tech|growth", "speakerName": "主持人|产品专家|技术专家|增长专家", "text": "string"}
   ],
   "summary": {
     "keyPoints": ["string", "string", "string"],
@@ -64,7 +71,10 @@ JSON 结构：
     "risks": ["string", "string"]
   }
 }
-约束：messages 6-10 条；每条 1-3 句话；明显围绕 topic；中文。"""
+约束：
+- messages 6-10 条；每条 1-3 句话；内容必须明显围绕 topic，不同 topic 讨论内容必须不同；
+- 禁止照搬示例话术；禁止出现 Twilight、Rainbow 等英文角色名；
+- speakerName 必须与 speakerId 对应（host→主持人，product→产品专家，tech→技术专家，growth→增长专家）。"""
 
 
 class LlmMessage(BaseModel):
@@ -142,38 +152,38 @@ def fallback_demo_script(topic: str) -> LlmMeetingScript:
     """Stable local demo script centered on topic (no external API)."""
     t = normalize_topic(topic)
     return LlmMeetingScript(
-        title=f"关于「{t}」的小马圆桌",
+        title=f"关于「{t}」的专家圆桌",
         topic=t,
         messages=[
             LlmMessage(
-                speakerId="twilight",
-                speakerName="Twilight Sparkle",
+                speakerId="host",
+                speakerName="主持人",
                 text=f"我们先框定议题：{t}。我会从目标、约束和可验证假设三条线拆开。",
             ),
             LlmMessage(
-                speakerId="rainbow",
-                speakerName="Rainbow Dash",
-                text=f"别分析太久。围绕「{t}」，两周内必须有一个能演示、能收集反馈的最小版本。",
+                speakerId="growth",
+                speakerName="增长专家",
+                text=f"别分析太久。围绕「{t}」，先明确谁受益、怎么验证需求是否真实存在。",
             ),
             LlmMessage(
-                speakerId="rarity",
-                speakerName="Rarity",
-                text="速度重要，但体验不能塌。第一版界面要让人愿意继续聊，而不是看完就走。",
+                speakerId="product",
+                speakerName="产品专家",
+                text=f"同意要快，但 MVP 边界要清楚。针对「{t}」，第一版只解决最痛的一个场景。",
             ),
             LlmMessage(
-                speakerId="fluttershy",
-                speakerName="Fluttershy",
-                text=f"也请想想人和团队：{t} 若推进太快，会不会让一线同学失去掌控感？",
+                speakerId="tech",
+                speakerName="技术专家",
+                text=f"从工程角度，{t} 若两周内要演示，建议先 mock 数据 + 手动流程，别一上来接复杂接口。",
             ),
             LlmMessage(
-                speakerId="rainbow",
-                speakerName="Rainbow Dash",
-                text="同意补一层风险检查。我们并行：一条线做 demo，一条线做 5 人用户访谈。",
+                speakerId="growth",
+                speakerName="增长专家",
+                text="可以先并行：一条线做可演示原型，一条线找 5 个目标用户访谈。",
             ),
             LlmMessage(
-                speakerId="twilight",
-                speakerName="Twilight Sparkle",
-                text=f"收束：{t} 的 MVP 先验证「是否值得继续投入」，再谈全面铺开。",
+                speakerId="host",
+                speakerName="主持人",
+                text=f"收束：「{t}」先用最小方案验证核心假设，再决定是否加大投入。",
             ),
         ],
         summary=LlmSummary(
@@ -212,22 +222,22 @@ def script_to_meeting_events(script: LlmMeetingScript, topic: str) -> list[dict[
         }
     ]
 
-    # agent_joined → host announcement speeches
-    for idx, (_sid, display_name, _agent) in enumerate(PONY_ROSTER):
+    # 各专家就位（由本人简短发言，与前端圆桌角色名一致）
+    for idx, (_sid, display_name, agent_id) in enumerate(EXPERT_ROSTER):
         events.append(
             {
                 "id": f"llm-join-{idx}",
                 "type": "speech",
-                "speakerId": "host",
+                "speakerId": agent_id,
                 "emotion": "happy",
                 "action": "open",
-                "text": f"{display_name} 加入了圆桌。",
+                "text": f"{display_name}已就位。",
                 "delay_before_ms": 0,
-                "duration_ms": 1600,
+                "duration_ms": 1400,
             }
         )
 
-    # topic_introduced → host speech
+    # 议题介绍 → 主持人
     events.append(
         {
             "id": "llm-topic-intro",
@@ -235,13 +245,13 @@ def script_to_meeting_events(script: LlmMeetingScript, topic: str) -> list[dict[
             "speakerId": "host",
             "emotion": "thinking",
             "action": "open",
-            "text": f"今天的议题是：{resolved_topic}。{script.title}",
+            "text": f"今天讨论：{resolved_topic}",
             "delay_before_ms": 0,
-            "duration_ms": 2800,
+            "duration_ms": 2400,
         }
     )
 
-    # messages → speech
+    # messages → speech（优先用 LLM 返回的 speakerName 校验，展示层靠 speakerId）
     for idx, msg in enumerate(script.messages):
         agent_id = _map_speaker_id(msg.speakerId)
         events.append(

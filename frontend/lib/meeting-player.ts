@@ -3,6 +3,7 @@ import type { MeetingEvent, MeetingSummary } from "./types";
 export interface MeetingPlayer {
   currentEvent: MeetingEvent | null;
   currentEventId: string | null;
+  activeIndex: number;
   summary: MeetingSummary | null;
   isPlaying: boolean;
   hasStarted: boolean;

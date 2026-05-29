@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf5ff;
+  --background: #f5f0ff;
   --foreground: #1e1b4b;
+  --accent-violet: #7c3aed;
+  --accent-fuchsia: #d946ef;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.85);
 }
 
 @theme inline {
@@ -13,12 +17,49 @@
 }
 
 body {
-  background: linear-gradient(
-    160deg,
-    #faf5ff 0%,
-    #fff7ed 45%,
-    #f0f9ff 100%
-  );
+  background-color: #ede9fe;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(167, 139, 250, 0.35), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(251, 191, 36, 0.2), transparent),
+    radial-gradient(ellipse 50% 50% at 50% 100%, rgba(56, 189, 248, 0.15), transparent),
+    linear-gradient(165deg, #f5f3ff 0%, #fff7ed 40%, #f0f9ff 100%);
+  background-attachment: fixed;
   color: var(--foreground);
   min-height: 100vh;
+}
+
+/* Demo glass panel utility */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 24px rgba(124, 58, 237, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.glass-panel-strong {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 8px 32px rgba(124, 58, 237, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Subtle scrollbar for speech panel */
+.speech-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.speech-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.speech-scroll::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 999px;
+}
+.speech-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.35);
 }
