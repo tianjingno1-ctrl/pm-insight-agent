@@ -18,7 +18,7 @@
 | 分支 | 说明 | 锚点 |
 |------|------|------|
 | `main` | Streamlit Phase 1.5 **已封版** | `5d2bb24`，tag `phase-1.5-summary-done`，`DEBUG_SUMMARY=False` |
-| `experiment/pony-roundtable-ui` | AI 专家圆桌演示 UI（**当前主开发线**） | **`1ce0e6c`** · Phase 2.2 tag `phase-2.2-sse-mock-integration` 勿动 |
+| `experiment/pony-roundtable-ui` | AI 专家圆桌演示 UI（**当前主开发线**） | **`654bd42`** · Phase 2.2 tag `phase-2.2-sse-mock-integration` 勿动 |
 
 **Phase 2.1 tags（勿移动）**
 
@@ -472,7 +472,7 @@ flowchart TB
 | Commit | 说明 |
 |--------|------|
 | `f6dba6e` | DeepSeek 接线 + 短气泡 + 流式面板 + LLM topic 修复 |
-| `1ce0e6c` | 发言记录 + 演示 UI + 中文专家 + 分享材料 + handoff 更新 |
+| `654bd42` | 发言记录 + 演示 UI + 中文专家 + 分享材料 + handoff 更新 |
 
 ### 三、演示要点
 
@@ -517,4 +517,4 @@ py -3.12 scripts/generate_share_pptx.py
 
 ---
 
-*交接包版本：2026-05-29 Phase 2.3-Demo-UI @ `1ce0e6c` · Phase 2.3-Demo-LLM `f6dba6e` · Phase 2.2 tags `phase-2.2-mock-sse-backend` + `phase-2.2-sse-mock-integration` · Phase 2.1 `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
+*交接包版本：2026-05-29 Phase 2.3-Demo-UI @ `654bd42` · Phase 2.3-Demo-LLM `f6dba6e` · Phase 2.2 tags `phase-2.2-mock-sse-backend` + `phase-2.2-sse-mock-integration` · Phase 2.1 `phase-2.1-pony-ui-accepted` @ `3360287` · main @ `5d2bb24`*
